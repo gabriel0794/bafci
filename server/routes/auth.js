@@ -93,4 +93,38 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// @route   GET api/auth/me
+// @desc    Get authenticated user's profile
+// @access  Private
+router.get('/me', async (req, res) => {
+  try {
+    // The auth middleware should add the user ID to the request
+    const token = req.header('x-auth-token');
+    if (!token) {
+      return res.status(401).json({ msg: 'No token, authorization denied' });
+    }
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Get user from the database
+      const user = await User.findByPk(decoded.user.id, {
+        attributes: { exclude: ['password'] } // Exclude password from the response
+      });
+
+      if (!user) {
+        return res.status(404).json({ msg: 'User not found' });
+      }
+
+      res.json(user);
+    } catch (err) {
+      res.status(401).json({ msg: 'Token is not valid' });
+    }
+  } catch (err) {
+    console.error('Server Error:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 export default router;

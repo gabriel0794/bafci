@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from './pages/authentication/login';
 import Signup from './pages/authentication/signup';
 import Dashboard from './pages/dashboard/dashboard';
+import RevenuePage from './pages/revenue';
 import { authService } from './services/api';
 
 // Create a protected route component
@@ -28,6 +29,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/revenue',
+    element: (
+      <ProtectedRoute>
+        <RevenuePage />
       </ProtectedRoute>
     ),
   },

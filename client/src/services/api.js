@@ -44,4 +44,26 @@ export const authService = {
   getAuthToken() {
     return localStorage.getItem('token');
   },
+
+  // Get the authenticated user's profile
+  async getUserProfile() {
+    try {
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': this.getAuthToken()
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  },
 };
