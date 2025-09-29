@@ -19,18 +19,38 @@ export default function Signup() {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError("");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
+    // Password matching validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
+
+    // Other validations
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.phone ||
+      !formData.address ||
+      !formData.password
+    ) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const { token, error } = await authService.signup({
@@ -48,11 +68,13 @@ export default function Signup() {
 
       if (token) {
         authService.setAuthToken(token);
-        navigate("/login"); // Redirect to dashboard after successful signup
+        navigate("/login");
       }
     } catch (err) {
       setError("An error occurred during signup");
       console.error("Signup error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -124,7 +146,11 @@ export default function Signup() {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded bg-white text-gray-900 focus:outline-none border border-gray-300"
+              className={`w-full px-3 py-2 rounded bg-white text-gray-900 focus:outline-none border ${
+                error === "Passwords do not match"
+                  ? "border-red-500"
+                  : "border-gray-300"
+              }`}
               required
               minLength="6"
             />
@@ -139,10 +165,19 @@ export default function Signup() {
               placeholder="Confirm Password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded bg-white text-gray-900 focus:outline-none border border-gray-300"
+              className={`w-full px-3 py-2 rounded bg-white text-gray-900 focus:outline-none border ${
+                error === "Passwords do not match"
+                  ? "border-red-500"
+                  : "border-gray-300"
+              }`}
               required
               minLength="6"
             />
+            {error === "Passwords do not match" && (
+              <p className="mt-1 text-sm text-red-300">
+                Passwords do not match
+              </p>
+            )}
           </div>
           <button
             type="submit"

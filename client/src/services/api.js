@@ -1,30 +1,35 @@
 const API_URL = 'http://localhost:5000/api';
 
 export const authService = {
-  async signup(userData) {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    async login(credentials) {
+        try {
+          const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: credentials.email, // Make sure this matches your backend's expected field
+              password: credentials.password,
+            }),
+          });
+      
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw {
+              response: {
+                status: response.status,
+                data: errorData
+              }
+            };
+          }
+      
+          return await response.json();
+        } catch (error) {
+          console.error('Login API error:', error);
+          throw error;
+        }
       },
-      body: JSON.stringify(userData),
-    });
-    return await response.json();
-  },
-
-  async login(credentials) {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: credentials.email, // Your login form uses email as username
-        password: credentials.password,
-      }),
-    });
-    return await response.json();
-  },
 
   // Add this method to set the auth token for future requests
   setAuthToken(token) {
