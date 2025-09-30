@@ -78,10 +78,18 @@ const RevenuePage = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleTransaction = async (type) => {
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      setError('Please enter a valid positive amount.');
+      return;
+    }
+
     try {
       const token = authService.getAuthToken();
+      const amount = type === 'expense' 
+        ? -Math.abs(parseFloat(formData.amount)) 
+        : Math.abs(parseFloat(formData.amount));
+
       const response = await fetch('http://localhost:5000/api/revenue', {
         method: 'POST',
         headers: {
@@ -91,12 +99,13 @@ const RevenuePage = () => {
         credentials: 'include',
         body: JSON.stringify({
           ...formData,
-          amount: parseFloat(formData.amount),
+          amount: amount,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add revenue');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to process transaction');
       }
 
       // Refresh the list
@@ -108,9 +117,10 @@ const RevenuePage = () => {
         category: 'other',
         date: new Date().toISOString().split('T')[0],
       });
+      setError(null); // Clear any previous errors
     } catch (err) {
-      console.error('Error adding revenue:', err);
-      setError('Failed to add revenue');
+      console.error('Error processing transaction:', err);
+      setError(err.message || 'Failed to process transaction');
     }
   };
 
@@ -200,13 +210,13 @@ const RevenuePage = () => {
         {/* Add Revenue Form */}
         <div className="lg:col-span-1">
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Add Revenue</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Manage Revenue</h2>
             {error && (
               <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
                 {error}
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
               <div>
                 <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
                   Amount (₱)
@@ -255,7 +265,7 @@ const RevenuePage = () => {
 
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                  Description
+                  Description/Purpose
                 </label>
                 <input
                   type="text"
@@ -301,12 +311,20 @@ const RevenuePage = () => {
                 />
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 grid grid-cols-2 gap-4">
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleTransaction('revenue')}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                 >
                   Add Revenue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTransaction('expense')}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Add Expense
                 </button>
               </div>
             </form>
@@ -332,6 +350,9 @@ const RevenuePage = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Added By
+                    </th>
                     <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount
                     </th>
@@ -350,6 +371,9 @@ const RevenuePage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {revenue.category.charAt(0).toUpperCase() + revenue.category.slice(1)}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {revenue.user?.name || 'System'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <span className={`${revenue.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {formatCurrency(revenue.amount)}
@@ -359,13 +383,55 @@ const RevenuePage = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
                         No revenue entries found
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+            
+            {/* Revenue Summary */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Revenue Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Total Revenue */}
+                <div className="bg-white p-4 rounded-lg shadow">
+                  <div className="text-sm font-medium text-gray-500">Total Revenue</div>
+                  <div className="mt-1 text-2xl font-semibold text-gray-900">
+                    {formatCurrency(
+                      revenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0)
+                    )}
+                  </div>
+                </div>
+                
+                {/* Added Revenue */}
+                <div className="bg-white p-4 rounded-lg shadow">
+                  <div className="text-sm font-medium text-gray-500">Total Added</div>
+                  <div className="mt-1 text-2xl font-semibold text-green-600">
+                    {formatCurrency(
+                      revenues
+                        .filter(rev => parseFloat(rev.amount) > 0)
+                        .reduce((sum, rev) => sum + parseFloat(rev.amount), 0)
+                    )}
+                  </div>
+                </div>
+                
+                {/* Minused Revenue */}
+                <div className="bg-white p-4 rounded-lg shadow">
+                  <div className="text-sm font-medium text-gray-500">Total Expenses</div>
+                  <div className="mt-1 text-2xl font-semibold text-red-600">
+                    {formatCurrency(
+                      Math.abs(
+                        revenues
+                          .filter(rev => parseFloat(rev.amount) < 0)
+                          .reduce((sum, rev) => sum + parseFloat(rev.amount), 0)
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

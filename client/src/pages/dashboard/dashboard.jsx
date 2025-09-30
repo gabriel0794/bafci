@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api';
-import RevenueSummary from '../../components/revenue/RevenueSummary';
+import RevenueSummary from '../../components/dashboard/RevenueSummary';
 
 export default function Dashboard() {
   const [userData, setUserData] = useState(null);
@@ -98,12 +98,15 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <main className="py-10">
+        <main>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="px-4 py-6 sm:px-0">
-              {/* Revenue Summary - Read Only */}
-              <div className="mb-8">
-                <RevenueSummary />
+            {/* Revenue Summary */}
+            <RevenueSummary />
+            
+            {/* Additional dashboard content */}
+            <div className="mt-8">
+              <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 flex items-center justify-center">
+                <p className="text-gray-500">Additional dashboard content goes here</p>
               </div>
             </div>
           </div>

@@ -1,6 +1,8 @@
 import express from 'express';
 import Revenue from '../models/revenue.model.js';
+import User from '../authentication/user.js';
 import { auth } from '../middleware/auth.js';
+import sequelize from '../config/db.js';
 
 const router = express.Router();
 
@@ -32,6 +34,13 @@ router.get('/', auth, async (req, res) => {
 
     const revenues = await Revenue.findAll({
       order: [['date', 'DESC']],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
     });
     
     res.json(revenues);

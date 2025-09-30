@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.js';
+import User from '../authentication/user.js';
 
 const Revenue = sequelize.define('Revenue', {
   id: {
@@ -11,7 +12,11 @@ const Revenue = sequelize.define('Revenue', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     validate: {
-      min: 0.01,
+      notZero: function(value) {
+        if (parseFloat(value) === 0) {
+          throw new Error('Amount cannot be zero');
+        }
+      }
     },
   },
   description: {
@@ -24,7 +29,7 @@ const Revenue = sequelize.define('Revenue', {
     defaultValue: DataTypes.NOW,
   },
   category: {
-    type: DataTypes.ENUM('membership', 'training', 'merchandise', 'other'),
+    type: DataTypes.ENUM('membership', 'training', 'merchandise', 'monthly','other'),
     allowNull: false,
     defaultValue: 'other',
   },
@@ -46,6 +51,12 @@ const Revenue = sequelize.define('Revenue', {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
+});
+
+// Define the association
+Revenue.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user'
 });
 
 export default Revenue;
