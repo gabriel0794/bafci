@@ -3,9 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import sequelize from './config/db.js';
+import './models/index.js'; // Import models to initialize associations
 import authRoutes from './routes/auth.js';
 import protectedRoutes from './routes/protected.js';
 import revenueRoutes from './routes/revenue.js';
+import branchRoutes from './routes/branch.js';
 
 // Load environment variables
 dotenv.config();
@@ -15,9 +17,11 @@ const app = express();
 // Connect to database
 connectDB();
 
-// Sync database models
-sequelize.sync().then(() => {
-  console.log('Database & tables created!');
+// Sync database models (don't alter tables, use migrations instead)
+sequelize.sync({ alter: false }).then(() => {
+  console.log('Database models synced!');
+}).catch((err) => {
+  console.error('Error syncing database:', err);
 });
 
 // Init Middleware
@@ -41,6 +45,7 @@ app.get('/', (req, res) => res.send('API Running'));
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/revenue', revenueRoutes);
+app.use('/api/branches', branchRoutes);
 
 const PORT = process.env.PORT || 5000;
 

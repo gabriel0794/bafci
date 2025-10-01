@@ -1,6 +1,7 @@
 import express from 'express';
 import Revenue from '../models/revenue.model.js';
 import User from '../authentication/user.js';
+import Branch from '../models/branch.model.js';
 import { auth } from '../middleware/auth.js';
 import sequelize from '../config/db.js';
 
@@ -39,6 +40,12 @@ router.get('/', auth, async (req, res) => {
           model: User,
           as: 'user',
           attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Branch,
+          as: 'branch',
+          attributes: ['id', 'name'],
+          required: false // Make branch optional for existing revenues without branchId
         }
       ]
     });

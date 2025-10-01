@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.js';
 import User from '../authentication/user.js';
+import Branch from './branch.model.js';
 
 const Revenue = sequelize.define('Revenue', {
   id: {
@@ -33,6 +34,14 @@ const Revenue = sequelize.define('Revenue', {
     allowNull: false,
     defaultValue: 'other',
   },
+  branchId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Branches',
+      key: 'id',
+    },
+  },
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -53,10 +62,6 @@ const Revenue = sequelize.define('Revenue', {
   },
 });
 
-// Define the association
-Revenue.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user'
-});
+// Associations are defined in models/index.js to avoid circular dependencies
 
 export default Revenue;

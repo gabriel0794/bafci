@@ -5,13 +5,15 @@ import { Link, useLocation } from 'react-router-dom';
 
 const RevenuePage = () => {
   const [revenues, setRevenues] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     category: 'other',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    branchId: ''
   });
   
   const navigate = useNavigate();
@@ -20,7 +22,35 @@ const RevenuePage = () => {
 
   useEffect(() => {
     fetchRevenues();
+    fetchBranches();
   }, []);
+
+  const fetchBranches = async () => {
+    try {
+      const token = authService.getAuthToken();
+      
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/branches', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token,
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBranches(data);
+      }
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+    }
+  };
 
   const fetchRevenues = async () => {
     try {
@@ -116,6 +146,7 @@ const RevenuePage = () => {
         description: '',
         category: 'other',
         date: new Date().toISOString().split('T')[0],
+        branchId: ''
       });
       setError(null); // Clear any previous errors
     } catch (err) {
@@ -279,6 +310,27 @@ const RevenuePage = () => {
               </div>
 
               <div>
+                <label htmlFor="branchId" className="block text-sm font-medium text-gray-700">
+                  Branch
+                </label>
+                <select
+                  id="branchId"
+                  name="branchId"
+                  required
+                  value={formData.branchId}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full px-2 py-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                >
+                  <option value="">Select a branch</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700">
                   Category
                 </label>
@@ -332,8 +384,8 @@ const RevenuePage = () => {
         </div>
 
         {/* Revenue List */}
-        <div className="lg:col-span-2">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="lg:col-span-2 w-full">
+          <div className="bg-white shadow rounded-lg overflow-hidden w-full">
             <div className="px-6 py-5 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Recent Revenue Entries</h3>
             </div>
@@ -341,19 +393,22 @@ const RevenuePage = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                       Date
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                      Branch
+                    </th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                       Category
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                       Added By
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                       Amount
                     </th>
                   </tr>
@@ -362,19 +417,22 @@ const RevenuePage = () => {
                   {revenues.length > 0 ? (
                     revenues.map((revenue) => (
                       <tr key={revenue.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(revenue.date)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-3 py-3 text-sm font-medium text-gray-900 max-w-xs truncate">
                           {revenue.description}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                          {revenue.branch?.name || 'N/A'}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                           {revenue.category.charAt(0).toUpperCase() + revenue.category.slice(1)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                           {revenue.user?.name || 'System'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <span className={`${revenue.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {formatCurrency(revenue.amount)}
                           </span>
@@ -383,7 +441,7 @@ const RevenuePage = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan="6" className="px-3 py-4 text-center text-sm text-gray-500">
                         No revenue entries found
                       </td>
                     </tr>
