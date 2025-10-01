@@ -458,18 +458,42 @@ const MembersPage = () => {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Program *
                               </label>
-                              <select
-                                name="program"
-                                value={currentMember.program}
-                                onChange={handleProgramChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-2 py-2"
-                                required
-                              >
-                                <option value="">Select Program...</option>
-                                {programOptions.map((option, index) => (
-                                  <option key={index} value={option}>{option}</option>
-                                ))}
-                              </select>
+                              <FormControl fullWidth size="small" required>
+                                <Select
+                                  name="program"
+                                  value={currentMember.program}
+                                  onChange={handleProgramChange}
+                                  displayEmpty
+                                  inputProps={{ 'aria-label': 'Select Program' }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#d1d5db',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                      borderWidth: '2px',
+                                    },
+                                    '& .MuiSelect-icon': {
+                                      color: '#6b7280',
+                                    },
+                                    backgroundColor: 'white',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.875rem',
+                                  }}
+                                >
+                                  <MenuItem value="">
+                                    <em>Select Program...</em>
+                                  </MenuItem>
+                                  {programOptions.map((option) => (
+                                    <MenuItem key={option} value={option}>
+                                      {option}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
                             </div>
                             
                             {/* Age Bracket Dropdown - Only shown when a program is selected */}
@@ -477,30 +501,52 @@ const MembersPage = () => {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Age Bracket *
                               </label>
-                              <select
-                                name="ageBracket"
-                                value={currentMember.ageBracket}
-                                onChange={(e) => {
-                                  const selectedBracket = e.target.value;
-                                  const selectedData = getAgeBrackets().find(bracket => bracket.range === selectedBracket);
-                                  setCurrentMember({
-                                    ...currentMember,
-                                    ageBracket: selectedBracket,
-                                    contributionAmount: selectedData ? selectedData.amount : '',
-                                    availmentPeriod: selectedData ? selectedData.availment : ''
-                                  });
-                                }}
-                                disabled={!currentMember.program}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-2 py-2 disabled:bg-gray-100 disabled:text-gray-500"
-                                required
-                              >
-                                <option value="">Select Age Bracket...</option>
-                                {getAgeBrackets().map((bracket, index) => (
-                                  <option key={index} value={bracket.range}>
-                                    {bracket.range} years
-                                  </option>
-                                ))}
-                              </select>
+                              <FormControl fullWidth size="small" required disabled={!currentMember.program}>
+                                <Select
+                                  name="ageBracket"
+                                  value={currentMember.ageBracket}
+                                  onChange={(e) => {
+                                    const selectedBracket = e.target.value;
+                                    const selectedData = getAgeBrackets().find(bracket => bracket.range === selectedBracket);
+                                    setCurrentMember({
+                                      ...currentMember,
+                                      ageBracket: selectedBracket,
+                                      contributionAmount: selectedData ? selectedData.amount : '',
+                                      availmentPeriod: selectedData ? selectedData.availment : ''
+                                    });
+                                  }}
+                                  displayEmpty
+                                  inputProps={{ 'aria-label': 'Select Age Bracket' }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#d1d5db',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: currentMember.program ? '#10b981' : '#d1d5db',
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: currentMember.program ? '#10b981' : '#d1d5db',
+                                      borderWidth: '2px',
+                                    },
+                                    '& .MuiSelect-icon': {
+                                      color: '#6b7280',
+                                    },
+                                    backgroundColor: currentMember.program ? 'white' : '#f9fafb',
+                                    color: !currentMember.program ? '#9ca3af' : 'inherit',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.875rem',
+                                  }}
+                                >
+                                  <MenuItem value="">
+                                    <em>Select Age Bracket...</em>
+                                  </MenuItem>
+                                  {getAgeBrackets().map((bracket, index) => (
+                                    <MenuItem key={index} value={bracket.range}>
+                                      {bracket.range} years
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
                             </div>
                             
                             {/* Contribution Amount - Readonly */}
@@ -598,36 +644,80 @@ const MembersPage = () => {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Sex
                               </label>
-                              <select
-                                name="sex"
-                                value={currentMember.sex}
-                                onChange={handleChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-2 py-2"
-                                required
-                              >
-                                <option value="">Select...</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                              </select>
+                              <FormControl fullWidth size="small" required>
+                                <Select
+                                  name="sex"
+                                  value={currentMember.sex}
+                                  onChange={handleChange}
+                                  displayEmpty
+                                  inputProps={{ 'aria-label': 'Select Sex' }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#d1d5db',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                      borderWidth: '2px',
+                                    },
+                                    '& .MuiSelect-icon': {
+                                      color: '#6b7280',
+                                    },
+                                    backgroundColor: 'white',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.875rem',
+                                  }}
+                                >
+                                  <MenuItem value="">
+                                    <em>Select...</em>
+                                  </MenuItem>
+                                  <MenuItem value="Male">Male</MenuItem>
+                                  <MenuItem value="Female">Female</MenuItem>
+                                </Select>
+                              </FormControl>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Civil Status
                               </label>
-                              <select
-                                name="civilStatus"
-                                value={currentMember.civilStatus}
-                                onChange={handleChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-2 py-2"
-                                required
-                              >
-                                <option value="">Select...</option>
-                                <option value="Single">Single</option>
-                                <option value="Married">Married</option>
-                                <option value="Widowed">Widowed</option>
-                                <option value="Separated">Separated</option>
-                                <option value="Divorced">Divorced</option>
-                              </select>
+                              <FormControl fullWidth size="small" required>
+                                <Select
+                                  name="civilStatus"
+                                  value={currentMember.civilStatus}
+                                  onChange={handleChange}
+                                  displayEmpty
+                                  inputProps={{ 'aria-label': 'Select Civil Status' }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#d1d5db',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                      borderWidth: '2px',
+                                    },
+                                    '& .MuiSelect-icon': {
+                                      color: '#6b7280',
+                                    },
+                                    backgroundColor: 'white',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.875rem',
+                                  }}
+                                >
+                                  <MenuItem value="">
+                                    <em>Select...</em>
+                                  </MenuItem>
+                                  <MenuItem value="Single">Single</MenuItem>
+                                  <MenuItem value="Married">Married</MenuItem>
+                                  <MenuItem value="Widowed">Widowed</MenuItem>
+                                  <MenuItem value="Separated">Separated</MenuItem>
+                                  <MenuItem value="Divorced">Divorced</MenuItem>
+                                </Select>
+                              </FormControl>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -814,17 +904,42 @@ const MembersPage = () => {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Endorsed By (Field Worker)
                               </label>
-                              <select
-                                name="endorsedBy"
-                                value={currentMember.endorsedBy}
-                                onChange={handleChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-2 py-2"
-                              >
-                                <option value="">Select staff</option>
-                                {endorsedByOptions.map((option, index) => (
-                                  <option key={index} value={option}>{option}</option>
-                                ))}
-                              </select>
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  name="endorsedBy"
+                                  value={currentMember.endorsedBy}
+                                  onChange={handleChange}
+                                  displayEmpty
+                                  inputProps={{ 'aria-label': 'Select Staff' }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#d1d5db',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                      borderColor: '#10b981',
+                                      borderWidth: '1px',
+                                    },
+                                    '& .MuiSelect-icon': {
+                                      color: '#6b7280',
+                                    },
+                                    backgroundColor: 'white',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.875rem',
+                                  }}
+                                >
+                                  <MenuItem value="">
+                                    <em>Select staff</em>
+                                  </MenuItem>
+                                  {endorsedByOptions.map((option, index) => (
+                                    <MenuItem key={index} value={option}>
+                                      {option}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
                             </div>
                           </div>
                         </div>
