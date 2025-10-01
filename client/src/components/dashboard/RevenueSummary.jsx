@@ -170,7 +170,7 @@ const RevenueSummary = () => {
   const { title, data } = getActivePeriodData();
 
   return (
-    <div className="mt-8">
+    <div className="mt-8 w-1/2 position-absolute">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-medium text-gray-900">Revenue Overview</h2>
         <div className="flex space-x-2">

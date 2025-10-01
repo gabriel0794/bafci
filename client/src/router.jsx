@@ -4,6 +4,7 @@ import Signup from './pages/authentication/signup';
 import Dashboard from './pages/dashboard/dashboard';
 import RevenuePage from './pages/revenue';
 import { authService } from './services/api';
+import MembersPage from './pages/members/members';
 
 // Create a protected route component
 const ProtectedRoute = ({ children }) => {
@@ -40,6 +41,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: '/members',
+    element: (
+      <ProtectedRoute>
+        <MembersPage />
+      </ProtectedRoute>
+    ),
+  },
+
   // Add a catch-all route that redirects to the login page
   {
     path: '*',
