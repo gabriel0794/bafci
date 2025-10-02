@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import protectedRoutes from './routes/protected.js';
 import revenueRoutes from './routes/revenue.js';
 import branchRoutes from './routes/branch.js';
+import memberRoutes from './routes/member.js';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/revenue', revenueRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/members', memberRoutes);
 
 const PORT = process.env.PORT || 5000;
 

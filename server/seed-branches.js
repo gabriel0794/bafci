@@ -25,7 +25,10 @@ async function seedBranches() {
       { name: 'Ozamiz', isActive: true },
       { name: 'Opol', isActive: true },
       { name: 'Cagayan de Oro City', isActive: true },
-      { name: 'Gingoog', isActive: true }
+      { name: 'Gingoog', isActive: true },
+      { name: 'Claveria', isActive: true },
+      { name: 'Molave', isActive: true },
+      { name: 'Jimenez', isActive: true }
     ];
 
     for (const branch of branches) {

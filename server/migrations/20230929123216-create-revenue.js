@@ -1,7 +1,7 @@
-'use strict';
+import { DataTypes } from 'sequelize';
 
-module.exports = {
-  up: async (queryInterface, Sequelize) => {
+export const up = async (queryInterface, Sequelize) => {
+
     await queryInterface.createTable('Revenues', {
       id: {
         allowNull: false,
@@ -56,9 +56,8 @@ module.exports = {
         defaultValue: Sequelize.NOW
       }
     });
-  },
+};
 
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Revenues');
-  }
+export const down = async (queryInterface, Sequelize) => {
+  await queryInterface.dropTable('Revenues');
 };

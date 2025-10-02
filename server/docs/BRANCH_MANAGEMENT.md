@@ -8,6 +8,9 @@ The revenue system now supports branch tracking. Each revenue entry can be assoc
 - Opol
 - Cagayan de Oro City
 - Gingoog
+- Claveria
+- Molave
+- Jimenez
 
 ## Adding a New Branch
 
