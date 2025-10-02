@@ -30,35 +30,31 @@ export const up = async (queryInterface, Sequelize) => {
     }
   });
 
-  // Seed initial branches
-  await queryInterface.bulkInsert('Branches', [
-    {
-      name: 'Ozamiz',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      name: 'Opol',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      name: 'Cagayan de Oro City',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      name: 'Gingoog',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ]);
-}
+};
 
-export async function down(queryInterface, Sequelize) {
+export const down = async (queryInterface, Sequelize) => {
+  // First, remove the foreign key constraint from Revenues
+  const tableDescription = await queryInterface.describeTable('Revenues');
+  
+  if (tableDescription.branchId) {
+    // Get the constraint name
+    const [results] = await queryInterface.sequelize.query(
+      `SELECT constraint_name 
+       FROM information_schema.table_constraints 
+       WHERE table_name = 'Revenues' 
+       AND constraint_type = 'FOREIGN KEY' 
+       AND constraint_name LIKE '%branchId%'`
+    );
+    
+    if (results && results.length > 0) {
+      const constraintName = results[0].constraint_name;
+      await queryInterface.removeConstraint('Revenues', constraintName);
+    }
+    
+    // Remove the column
+    await queryInterface.removeColumn('Revenues', 'branchId');
+  }
+  
+  // Now it's safe to drop the Branches table
   await queryInterface.dropTable('Branches');
-}
+};

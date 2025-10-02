@@ -1,6 +1,37 @@
 const API_URL = 'http://localhost:5000/api';
 
 export const authService = {
+    async signup(userData) {
+        try {
+            const response = await fetch(`${API_URL}/auth/signup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw {
+                    response: {
+                        status: response.status,
+                        data: errorData
+                    }
+                };
+            }
+
+            const data = await response.json();
+            if (data.token) {
+                this.setAuthToken(data.token);
+            }
+            return data;
+        } catch (error) {
+            console.error('Signup API error:', error);
+            throw error;
+        }
+    },
+
     async login(credentials) {
         try {
           const response = await fetch(`${API_URL}/auth/login`, {

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 
 // src/pages/Signup.jsx
 export default function Signup() {
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
