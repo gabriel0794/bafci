@@ -1,7 +1,5 @@
-'use strict';
-
 /** @type {import('sequelize-cli').Migration} */
-module.exports = {
+export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Payments', {
       id: {
@@ -73,7 +71,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE,
         field: 'updated_at',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
 
