@@ -1,6 +1,9 @@
 /** @type {import('sequelize-cli').Migration} */
+import { DataTypes } from 'sequelize';
+
 export default {
   async up(queryInterface, Sequelize) {
+    // Create ENUM types first
     await queryInterface.createTable('Payments', {
       id: {
         allowNull: false,
@@ -30,7 +33,7 @@ export default {
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       paymentType: {
-        type: Sequelize.ENUM('membership_fee', 'monthly_contribution'),
+        type: DataTypes.ENUM('membership_fee', 'monthly_contribution'),
         allowNull: false,
         field: 'payment_type',
         defaultValue: 'monthly_contribution'
@@ -48,7 +51,7 @@ export default {
         comment: 'End date of the payment period (for recurring payments)'
       },
       status: {
-        type: Sequelize.ENUM('pending', 'paid', 'overdue'),
+        type: DataTypes.ENUM('pending', 'paid', 'overdue'),
         allowNull: false,
         defaultValue: 'pending'
       },

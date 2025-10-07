@@ -45,8 +45,9 @@ const Revenue = sequelize.define('Revenue', {
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'user_id',
     references: {
-      model: 'Users',  // Changed from 'Staff' to 'Users' to match your existing table
+      model: 'User',  
       key: 'id',
     },
   },

@@ -12,6 +12,14 @@ class Member extends Model {
       foreignKey: 'memberId',
       as: 'payments'
     });
+    
+    // Define association with FieldWorker
+    Member.belongsTo(models.FieldWorker, {
+      foreignKey: 'fieldWorkerId',
+      as: 'fieldWorker',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
+    });
   }
 }
 
@@ -63,7 +71,21 @@ const initModel = (sequelize) => {
     datePaid: DataTypes.DATEONLY,
     receivedBy: DataTypes.STRING,
     orNumber: DataTypes.STRING,
-    endorsedBy: DataTypes.STRING,
+    endorsedBy: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'endorsed_by'
+    },
+    fieldWorkerId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'field_workers',
+        key: 'id'
+      },
+      onDelete: 'SET NULL',
+      field: 'field_worker_id'
+    },
     branch: DataTypes.STRING,
     membershipFeePaid: {
       type: DataTypes.BOOLEAN,
@@ -104,23 +126,25 @@ const initModel = (sequelize) => {
     createdBy: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'created_by',
       references: {
-        model: 'Users',
+        model: 'User',
         key: 'id'
       }
     },
     updatedBy: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'updated_by',
       references: {
-        model: 'Users',
+        model: 'User',
         key: 'id'
       }
     }
   }, {
     sequelize,
     modelName: 'Member',
-    tableName: 'Members',
+    tableName: 'members',
     timestamps: true,
     underscored: true,
     indexes: [

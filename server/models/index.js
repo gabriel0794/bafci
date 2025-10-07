@@ -1,10 +1,13 @@
 import sequelize from '../config/db.js';
 import User from '../authentication/user.js';
-import Branch from './branch.model.js';
+import { initBranch, Branch } from './branch.model.js';
 import Revenue from './revenue.model.js';
 import { initMember, Member } from './member.js';
+import { initFieldWorker, FieldWorker } from './fieldWorker.js';
 
-// Initialize the Member model
+// Initialize all models
+initBranch(sequelize);
+initFieldWorker(sequelize);
 initMember(sequelize);
 
 // Define all associations here to avoid circular dependencies
@@ -23,13 +26,50 @@ Branch.hasMany(Revenue, {
   as: 'revenues'
 });
 
+Branch.hasMany(FieldWorker, {
+  foreignKey: 'branchId',
+  as: 'fieldWorkers'
+});
+
 User.hasMany(Revenue, {
   foreignKey: 'userId',
   as: 'revenues'
 });
 
-// Member associations can be added here if needed
+// FieldWorker associations
+FieldWorker.belongsTo(Branch, {
+  foreignKey: 'branchId',
+  as: 'branch'
+});
+
+FieldWorker.hasMany(Member, {
+  foreignKey: 'fieldWorkerId',
+  as: 'members'
+});
+
+// Member associations
+Member.belongsTo(FieldWorker, {
+  foreignKey: 'fieldWorkerId',
+  as: 'fieldWorker',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
 
 // Export all models
-export { sequelize, User, Branch, Revenue, Member };
-export default { sequelize, User, Branch, Revenue, Member };
+export { 
+  sequelize, 
+  User, 
+  Branch, 
+  Revenue, 
+  Member, 
+  FieldWorker 
+};
+
+export default { 
+  sequelize, 
+  User, 
+  Branch, 
+  Revenue, 
+  Member, 
+  FieldWorker 
+};

@@ -35,6 +35,10 @@ const User = sequelize.define('User', {
     // 1 for admin, 2 for staff
     defaultValue: 2,
   },
+}, {
+  tableName: 'User',  // Explicitly set the table name
+  timestamps: true,   // Ensure timestamps are enabled
+  underscored: false  // Disable underscore for this model
 });
 
 export default User;
