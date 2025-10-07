@@ -9,6 +9,7 @@ import protectedRoutes from './routes/protected.js';
 import revenueRoutes from './routes/revenue.js';
 import branchRoutes from './routes/branch.js';
 import memberRoutes from './routes/member.js';
+import fieldWorkerRoutes from './routes/fieldWorker.js';
 
 // Load environment variables
 dotenv.config();
@@ -48,6 +49,7 @@ app.use('/api/protected', protectedRoutes);
 app.use('/api/revenue', revenueRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/members', memberRoutes);
+app.use('/api/field-workers', fieldWorkerRoutes);
 
 const PORT = process.env.PORT || 5000;
 

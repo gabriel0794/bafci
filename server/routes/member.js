@@ -5,6 +5,18 @@ import { auth } from '../middleware/auth.js';
 const { Member } = models;
 const router = express.Router();
 
+// Helper to convert object keys from snake_case to camelCase
+const toCamelCase = (obj) => {
+  const newObj = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+      newObj[camelKey] = obj[key];
+    }
+  }
+  return newObj;
+};
+
 // Create a new member
 router.post('/', auth, async (req, res) => {
   try {
@@ -12,8 +24,10 @@ router.post('/', auth, async (req, res) => {
     const userId = req.user.id;
     
     // Create member with the data from the request body
+    const memberData = toCamelCase(req.body);
+
     const member = await Member.create({
-      ...req.body,
+      ...memberData,
       createdBy: userId,
       updatedBy: userId
     });
@@ -90,7 +104,7 @@ router.get('/', auth, async (req, res) => {
         'date_paid',
         'received_by',
         'or_number',
-        'endorsed_by',
+        'field_worker_id',
         'branch',
         'created_at',
         'updated_at'
@@ -109,12 +123,49 @@ router.get('/', auth, async (req, res) => {
         }
       });
       
+      // Sanitize null values to empty strings
+      for (const key in memberData) {
+        if (memberData[key] === null) {
+          memberData[key] = '';
+        }
+      }
+      
       return memberData;
     });
     
     res.json(formattedMembers);
   } catch (error) {
     console.error('Error fetching members:', error);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Update a member
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const member = await Member.findByPk(req.params.id);
+
+    if (!member) {
+      return res.status(404).json({ message: 'Member not found' });
+    }
+
+    // Filter out null or empty string values from req.body
+    const incomingData = toCamelCase(req.body);
+    const memberData = {};
+    for (const key in incomingData) {
+      if (incomingData[key] !== null && incomingData[key] !== '') {
+        memberData[key] = incomingData[key];
+      }
+    }
+
+    await member.update(memberData);
+
+    res.json(member);
+  } catch (error) {
+    console.error('Error updating member:', error);
     res.status(500).json({ 
       message: 'Server error',
       error: error.message

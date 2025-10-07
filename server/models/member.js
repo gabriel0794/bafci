@@ -6,191 +6,123 @@ class Member extends Model {}
 Member.init({
   applicationNumber: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    field: 'application_number'
   },
   fullName: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'full_name'
   },
   nickname: DataTypes.STRING,
   age: DataTypes.INTEGER,
   program: DataTypes.STRING,
-  ageBracket: DataTypes.STRING,
+  ageBracket: {
+    type: DataTypes.STRING,
+    field: 'age_bracket'
+  },
   contributionAmount: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    validate: {
-      min: 0
-    }
+    field: 'contribution_amount'
   },
-  availmentPeriod: DataTypes.STRING,
+  availmentPeriod: {
+    type: DataTypes.STRING,
+    field: 'availment_period'
+  },
   picture: DataTypes.STRING,
   dateApplied: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
+    type: DataTypes.DATEONLY,
+    field: 'date_applied'
   },
-  birthDate: DataTypes.DATEONLY,
-  civilStatus: DataTypes.STRING,
-  gender: DataTypes.STRING,
-  address: DataTypes.TEXT,
-  contactNumber: DataTypes.STRING,
-  email: {
+  completeAddress: {
+    type: DataTypes.TEXT,
+    field: 'complete_address'
+  },
+  provincialAddress: {
+    type: DataTypes.TEXT,
+    field: 'provincial_address'
+  },
+  dateOfBirth: {
+    type: DataTypes.DATEONLY,
+    field: 'date_of_birth'
+  },
+  placeOfBirth: {
     type: DataTypes.STRING,
-    validate: {
-      isEmail: true
-    }
+    field: 'place_of_birth'
   },
-  barangay: DataTypes.STRING,
-  city: DataTypes.STRING,
-  province: DataTypes.STRING,
-  region: DataTypes.STRING,
-  spouseName: DataTypes.STRING,
-  spouseBirthDate: DataTypes.DATEONLY,
-  spouseContactNumber: DataTypes.STRING,
-  spouseOccupation: DataTypes.STRING,
-  spouseMonthlyIncome: DataTypes.DECIMAL(10, 2),
-  fatherName: DataTypes.STRING,
-  fatherBirthDate: DataTypes.DATEONLY,
-  fatherContactNumber: DataTypes.STRING,
-  fatherOccupation: DataTypes.STRING,
-  fatherMonthlyIncome: DataTypes.DECIMAL(10, 2),
-  motherName: DataTypes.STRING,
-  motherBirthDate: DataTypes.DATEONLY,
-  motherContactNumber: DataTypes.STRING,
-  motherOccupation: DataTypes.STRING,
-  motherMonthlyIncome: DataTypes.DECIMAL(10, 2),
-  dependents: DataTypes.INTEGER,
-  dependentsInfo: DataTypes.TEXT,
-  educationalAttainment: DataTypes.STRING,
-  schoolName: DataTypes.STRING,
-  course: DataTypes.STRING,
-  yearLevel: DataTypes.STRING,
-  isCurrentlyEnrolled: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  sex: DataTypes.STRING,
+  civilStatus: {
+    type: DataTypes.STRING,
+    field: 'civil_status'
   },
-  isGraduated: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  spouseName: {
+    type: DataTypes.STRING,
+    field: 'spouse_name'
   },
-  yearGraduated: DataTypes.STRING,
-  isEmployed: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  spouseDob: {
+    type: DataTypes.DATEONLY,
+    field: 'spouse_dob'
   },
-  employmentStatus: DataTypes.STRING,
-  occupation: DataTypes.STRING,
-  employerName: DataTypes.STRING,
-  employerAddress: DataTypes.TEXT,
-  employerContactNumber: DataTypes.STRING,
-  monthlyIncome: DataTypes.DECIMAL(10, 2),
-  yearsInCurrentJob: DataTypes.INTEGER,
-  isSelfEmployed: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  churchAffiliation: {
+    type: DataTypes.STRING,
+    field: 'church_affiliation'
   },
-  businessName: DataTypes.STRING,
-  businessType: DataTypes.STRING,
-  businessAddress: DataTypes.TEXT,
-  businessContactNumber: DataTypes.STRING,
-  businessYearsInOperation: DataTypes.INTEGER,
-  averageMonthlyIncome: DataTypes.DECIMAL(10, 2),
-  isOFW: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  educationAttainment: {
+    type: DataTypes.STRING,
+    field: 'education_attainment'
   },
-  country: DataTypes.STRING,
-  yearsWorkingAbroad: DataTypes.INTEGER,
-  monthlyRemittance: DataTypes.DECIMAL(10, 2),
-  isPensioner: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  presentEmployment: {
+    type: DataTypes.STRING,
+    field: 'present_employment'
   },
-  pensionType: DataTypes.STRING,
-  monthlyPension: DataTypes.DECIMAL(10, 2),
-  isStudent: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  employerName: {
+    type: DataTypes.STRING,
+    field: 'employer_name'
   },
-  schoolLevel: DataTypes.STRING,
-  schoolNameStudent: DataTypes.STRING,
-  yearLevelStudent: DataTypes.STRING,
-  isSingleParent: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  contactNumber: {
+    type: DataTypes.STRING,
+    field: 'contact_number'
   },
-  numberOfChildren: DataTypes.INTEGER,
-  childrenAges: DataTypes.STRING,
-  isPWD: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  beneficiaryName: {
+    type: DataTypes.STRING,
+    field: 'beneficiary_name'
   },
-  disabilityType: DataTypes.STRING,
-  isSeniorCitizen: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  beneficiaryDob: {
+    type: DataTypes.DATEONLY,
+    field: 'beneficiary_dob'
   },
-  seniorCitizenId: DataTypes.STRING,
-  isIndigenous: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  beneficiaryAge: {
+    type: DataTypes.INTEGER,
+    field: 'beneficiary_age'
   },
-  indigenousGroup: DataTypes.STRING,
-  isSoloParent: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  beneficiaryRelationship: {
+    type: DataTypes.STRING,
+    field: 'beneficiary_relationship'
   },
-  soloParentId: DataTypes.STRING,
-  is4PsBeneficiary: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  datePaid: {
+    type: DataTypes.DATEONLY,
+    field: 'date_paid'
   },
-  householdId4Ps: DataTypes.STRING,
-  isPantawidPamilyaBeneficiary: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  receivedBy: {
+    type: DataTypes.STRING,
+    field: 'received_by'
   },
-  householdIdPantawid: DataTypes.STRING,
-  isTUPADBeneficiary: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+  orNumber: {
+    type: DataTypes.STRING,
+    field: 'or_number'
   },
-  tupadId: DataTypes.STRING,
-  isOtherGovernmentAssistance: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  governmentAssistanceType: DataTypes.STRING,
-  governmentAssistanceDetails: DataTypes.TEXT,
-  isActive: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
-  },
-  remarks: DataTypes.TEXT,
   fieldWorkerId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'field_worker_id',
     references: {
       model: 'field_workers',
-      key: 'id'
+      key: 'id',
     },
-    field: 'field_worker_id',
     onDelete: 'SET NULL',
-    onUpdate: 'CASCADE'
+    onUpdate: 'CASCADE',
   },
-  createdAt: {
-    type: DataTypes.DATE,
-    field: 'created_at',
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    field: 'updated_at',
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  }
+  branch: DataTypes.STRING
 }, {
   sequelize,
   modelName: 'Member',
