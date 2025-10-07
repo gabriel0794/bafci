@@ -2,10 +2,12 @@ import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 
-const { Member } = models;
+const { Member, FieldWorker } = models;
 const router = express.Router();
 
 // Helper to convert object keys from snake_case to camelCase
+const toSnakeCase = (str) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
 const toCamelCase = (obj) => {
   const newObj = {};
   for (const key in obj) {
@@ -74,65 +76,40 @@ router.get('/', auth, async (req, res) => {
   try {
     const members = await Member.findAll({
       order: [['created_at', 'DESC']],
-      attributes: [
-        'id',
-        'full_name',
-        'nickname',
-        'age',
-        'program',
-        'age_bracket',
-        'contribution_amount',
-        'availment_period',
-        'date_applied',
-        'complete_address',
-        'provincial_address',
-        'date_of_birth',
-        'place_of_birth',
-        'sex',
-        'civil_status',
-        'spouse_name',
-        'spouse_dob',
-        'church_affiliation',
-        'education_attainment',
-        'present_employment',
-        'employer_name',
-        'contact_number',
-        'beneficiary_name',
-        'beneficiary_dob',
-        'beneficiary_age',
-        'beneficiary_relationship',
-        'date_paid',
-        'received_by',
-        'or_number',
-        'field_worker_id',
-        'branch',
-        'created_at',
-        'updated_at'
-      ]
+      include: [{
+        model: FieldWorker,
+        as: 'fieldWorker',
+        attributes: ['name'],
+      }],
     });
     
     // Format dates for better display
     const formattedMembers = members.map(member => {
       const memberData = member.get({ plain: true });
-      
-      // Format dates to ISO string (YYYY-MM-DD) for consistent display
-      const dateFields = ['date_applied', 'date_of_birth', 'spouse_dob', 'beneficiary_dob', 'date_paid'];
-      dateFields.forEach(field => {
-        if (memberData[field]) {
-          memberData[field] = new Date(memberData[field]).toISOString().split('T')[0];
-        }
-      });
-      
-      // Sanitize null values to empty strings
+      const snakeCaseMember = {};
+
       for (const key in memberData) {
-        if (memberData[key] === null) {
-          memberData[key] = '';
+        if (key === 'fieldWorker' && memberData[key]) {
+          snakeCaseMember['field_worker'] = {
+            name: memberData[key].name || ''
+          };
+        } else {
+          const snakeKey = toSnakeCase(key);
+          let value = memberData[key];
+
+          // Format dates
+          const dateFields = ['dateApplied', 'dateOfBirth', 'spouseDob', 'beneficiaryDob', 'datePaid', 'createdAt', 'updatedAt'];
+          if (dateFields.includes(key) && value) {
+            value = new Date(value).toISOString().split('T')[0];
+          }
+          
+          // Sanitize nulls
+          snakeCaseMember[snakeKey] = value === null ? '' : value;
         }
       }
-      
-      return memberData;
+      return snakeCaseMember;
     });
-    
+
     res.json(formattedMembers);
   } catch (error) {
     console.error('Error fetching members:', error);

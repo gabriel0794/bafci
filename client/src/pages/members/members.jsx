@@ -641,7 +641,7 @@ const MembersPage = () => {
                                 {member.program || 'N/A'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.endorsed_by || 'N/A'}
+                                {member.field_worker ? member.field_worker.name : 'N/A'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {member.branch || 'N/A'}
