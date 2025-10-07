@@ -24,7 +24,7 @@ async function seedBranches() {
     const branches = [
       { name: 'Ozamiz', isActive: true },
       { name: 'Opol', isActive: true },
-      { name: 'Cagayan de Oro City', isActive: true },
+      { name: 'Carmen (CDO)', isActive: true },
       { name: 'Gingoog', isActive: true },
       { name: 'Claveria', isActive: true },
       { name: 'Molave', isActive: true },
@@ -33,7 +33,7 @@ async function seedBranches() {
 
     for (const branch of branches) {
       await sequelize.query(
-        `INSERT INTO "Branches" (name, "isActive", "createdAt", "updatedAt")
+        `INSERT INTO "branches" (name, is_active, created_at, updated_at)
          VALUES (:name, :isActive, NOW(), NOW())
          ON CONFLICT (name) DO NOTHING`,
         {

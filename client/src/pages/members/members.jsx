@@ -536,14 +536,14 @@ const MembersPage = () => {
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <colgroup>
-                        <col className="w-1/6" />  {/* Name */}
-                        <col className="w-1/6" />  {/* Contact */}
-                        <col className="w-1/6" />  {/* Date Applied */}
-                        <col className="w-1/6" />  {/* Program */}
-                        <col className="w-1/6" />  {/* Endorsed By */}
-                        <col className="w-1/6" />  {/* Branch */}
-                        <col className="w-1/6" />  {/* Last Contribution Date */}
-                        <col className="w-1/6" />  {/* Next Due Date */}
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
+                        <col className="w-1/6" />
                       </colgroup>
                       <thead className="bg-gray-50">
                         <tr>

@@ -1,7 +1,8 @@
 import express from 'express';
-import { Member } from '../models/index.js';
+import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 
+const { Member } = models;
 const router = express.Router();
 
 // Create a new member

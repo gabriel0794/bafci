@@ -1,12 +1,7 @@
 import { DataTypes } from 'sequelize';
 
 export const up = async (queryInterface, Sequelize) => {
-  // Check if Members table already exists
-  const tables = await queryInterface.showAllTables();
-  const membersTableExists = tables.includes('Members');
-
-  if (!membersTableExists) {
-    await queryInterface.createTable('Members', {
+  await queryInterface.createTable('members', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -131,7 +126,7 @@ export const up = async (queryInterface, Sequelize) => {
         allowNull: true,
         field: 'created_by',
         references: {
-          model: 'User',
+          model: 'users',
           key: 'id'
         },
         onUpdate: 'CASCADE',
@@ -142,7 +137,7 @@ export const up = async (queryInterface, Sequelize) => {
         allowNull: true,
         field: 'updated_by',
         references: {
-          model: 'User',
+          model: 'users',
           key: 'id'
         },
         onUpdate: 'CASCADE',
@@ -161,9 +156,8 @@ export const up = async (queryInterface, Sequelize) => {
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
-  }
 };
 
 export const down = async (queryInterface, Sequelize) => {
-  await queryInterface.dropTable('Members');
+  await queryInterface.dropTable('members');
 };

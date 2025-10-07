@@ -1,14 +1,11 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/db.js';
 import User from '../authentication/user.js';
 import Branch from './branch.model.js';
 
-const Revenue = sequelize.define('Revenue', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
+class Revenue extends Model {}
+
+Revenue.init({
   amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
@@ -30,7 +27,7 @@ const Revenue = sequelize.define('Revenue', {
     defaultValue: DataTypes.NOW,
   },
   category: {
-    type: DataTypes.ENUM('membership', 'training', 'merchandise', 'monthly','other'),
+    type: DataTypes.ENUM('membership', 'training', 'merchandise', 'monthly', 'other'),
     allowNull: false,
     defaultValue: 'other',
   },
@@ -38,31 +35,55 @@ const Revenue = sequelize.define('Revenue', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Branches',
+      model: 'branches',
       key: 'id',
     },
+    field: 'branch_id',
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE'
   },
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
     field: 'user_id',
     references: {
-      model: 'User',  
+      model: 'users',
       key: 'id',
     },
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE'
   },
   createdAt: {
     type: DataTypes.DATE,
+    field: 'created_at',
     allowNull: false,
-    defaultValue: DataTypes.NOW,
+    defaultValue: DataTypes.NOW
   },
   updatedAt: {
     type: DataTypes.DATE,
+    field: 'updated_at',
     allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  sequelize,
+  modelName: 'Revenue',
+  tableName: 'revenues',
+  timestamps: true,
+  underscored: true
 });
 
-// Associations are defined in models/index.js to avoid circular dependencies
+// This will be called after all models are loaded
+Revenue.associate = (models) => {
+  Revenue.belongsTo(models.User, {
+    foreignKey: 'userId',
+    as: 'user'
+  });
+  
+  Revenue.belongsTo(models.Branch, {
+    foreignKey: 'branchId',
+    as: 'branch'
+  });
+};
 
 export default Revenue;

@@ -22,7 +22,7 @@ export const up = async (queryInterface, Sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Branches',
+        model: 'branches',
         key: 'id'
       },
       onUpdate: 'CASCADE',

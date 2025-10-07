@@ -4,7 +4,7 @@ import { DataTypes } from 'sequelize';
 export default {
   async up(queryInterface, Sequelize) {
     // Create ENUM types first
-    await queryInterface.createTable('Payments', {
+    await queryInterface.createTable('payments', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -15,7 +15,7 @@ export default {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Members',
+          model: 'members',
           key: 'id'
         },
         onUpdate: 'CASCADE',
@@ -79,13 +79,13 @@ export default {
     });
 
     // Add indexes for frequently queried fields
-    await queryInterface.addIndex('Payments', ['member_id']);
-    await queryInterface.addIndex('Payments', ['payment_date']);
-    await queryInterface.addIndex('Payments', ['status']);
-    await queryInterface.addIndex('Payments', ['payment_type']);
+    await queryInterface.addIndex('payments', ['member_id']);
+    await queryInterface.addIndex('payments', ['payment_date']);
+    await queryInterface.addIndex('payments', ['status']);
+    await queryInterface.addIndex('payments', ['payment_type']);
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Payments');
+    await queryInterface.dropTable('payments');
   }
 };

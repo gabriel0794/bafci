@@ -2,10 +2,10 @@
 export default {
   async up(queryInterface, Sequelize) {
     // Check if the column exists before adding it
-    const tableDescription = await queryInterface.describeTable('Members');
+    const tableDescription = await queryInterface.describeTable('members');
     
     if (!tableDescription.membership_fee_paid) {
-      await queryInterface.addColumn('Members', 'membership_fee_paid', {
+      await queryInterface.addColumn('members', 'membership_fee_paid', {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: false,
@@ -14,7 +14,7 @@ export default {
     }
 
     if (!tableDescription.membership_fee_paid_date) {
-      await queryInterface.addColumn('Members', 'membership_fee_paid_date', {
+      await queryInterface.addColumn('members', 'membership_fee_paid_date', {
         type: Sequelize.DATEONLY,
         allowNull: true,
         field: 'membership_fee_paid_date'
@@ -22,7 +22,7 @@ export default {
     }
 
     if (!tableDescription.last_contribution_date) {
-      await queryInterface.addColumn('Members', 'last_contribution_date', {
+      await queryInterface.addColumn('members', 'last_contribution_date', {
         type: Sequelize.DATEONLY,
         allowNull: true,
         field: 'last_contribution_date',
@@ -31,7 +31,7 @@ export default {
     }
 
     if (!tableDescription.next_due_date) {
-      await queryInterface.addColumn('Members', 'next_due_date', {
+      await queryInterface.addColumn('members', 'next_due_date', {
         type: Sequelize.DATEONLY,
         allowNull: true,
         field: 'next_due_date',
@@ -40,32 +40,32 @@ export default {
     }
 
     // Add indexes for the new fields if they don't exist
-    const indexes = await queryInterface.showIndex('Members');
+    const indexes = await queryInterface.showIndex('members');
     const indexNames = indexes.map(idx => idx.name);
     
     if (!indexNames.includes('members_membership_fee_paid')) {
-      await queryInterface.addIndex('Members', ['membership_fee_paid'], {
+      await queryInterface.addIndex('members', ['membership_fee_paid'], {
         name: 'members_membership_fee_paid'
       });
     }
     
     if (!indexNames.includes('members_last_contribution_date')) {
-      await queryInterface.addIndex('Members', ['last_contribution_date'], {
+      await queryInterface.addIndex('members', ['last_contribution_date'], {
         name: 'members_last_contribution_date'
       });
     }
     
     if (!indexNames.includes('members_next_due_date')) {
-      await queryInterface.addIndex('Members', ['next_due_date'], {
+      await queryInterface.addIndex('members', ['next_due_date'], {
         name: 'members_next_due_date'
       });
     }
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.removeColumn('Members', 'membership_fee_paid');
-    await queryInterface.removeColumn('Members', 'membership_fee_paid_date');
-    await queryInterface.removeColumn('Members', 'last_contribution_date');
-    await queryInterface.removeColumn('Members', 'next_due_date');
+    await queryInterface.removeColumn('members', 'membership_fee_paid');
+    await queryInterface.removeColumn('members', 'membership_fee_paid_date');
+    await queryInterface.removeColumn('members', 'last_contribution_date');
+    await queryInterface.removeColumn('members', 'next_due_date');
   }
 };

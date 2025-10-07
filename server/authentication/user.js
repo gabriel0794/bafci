@@ -36,9 +36,17 @@ const User = sequelize.define('User', {
     defaultValue: 2,
   },
 }, {
-  tableName: 'User',  // Explicitly set the table name
+  tableName: 'users', // Explicitly set the table name to lowercase
   timestamps: true,   // Ensure timestamps are enabled
-  underscored: false  // Disable underscore for this model
+  underscored: true   // Use snake_case for columns to match other models
 });
+
+// This will be called after all models are loaded
+User.associate = (models) => {
+  User.hasMany(models.Revenue, {
+    foreignKey: 'userId',
+    as: 'revenues'
+  });
+};
 
 export default User;

@@ -3,49 +3,48 @@ import sequelize from '../config/db.js';
 
 class Branch extends Model {}
 
-const initModel = (sequelize) => {
-  Branch.init({
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      field: 'created_at',
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      field: 'updated_at',
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-  }, {
-    sequelize,
-    modelName: 'Branch',
-    tableName: 'branches',
-    underscored: true,
-    timestamps: true
+Branch.init({
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    field: 'created_at',
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    field: 'updated_at',
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  sequelize,
+  modelName: 'Branch',
+  tableName: 'branches',
+  underscored: true,
+  timestamps: true
+});
+
+// This will be called after all models are loaded
+Branch.associate = (models) => {
+  Branch.hasMany(models.FieldWorker, {
+    foreignKey: 'branchId',
+    as: 'fieldWorkers'
   });
 
-  // Define association in the associate method
-  Branch.associate = function(models) {
-    Branch.hasMany(models.FieldWorker, {
-      foreignKey: 'branchId',
-      as: 'fieldWorkers'
-    });
-  };
-
-  return Branch;
+  Branch.hasMany(models.Revenue, {
+    foreignKey: 'branchId',
+    as: 'revenues'
+  });
 };
-
-const Branch = initModel(sequelize);
 
 export default Branch;
