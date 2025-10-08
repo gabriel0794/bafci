@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Box, Button, TextField, Typography, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent,
@@ -218,6 +219,14 @@ const MembersPage = () => {
   useEffect(() => {
     let result = [...members];
     
+    // Debug: Log member data to check field_worker values
+    console.log('All members:', members.map(m => ({
+      id: m.id,
+      name: m.full_name,
+      field_worker: m.field_worker,
+      branch: m.branch
+    })));
+    
     // Apply search term filter
     if (searchTerm) {
       const lowercasedFilter = searchTerm.toLowerCase();
@@ -241,8 +250,20 @@ const MembersPage = () => {
             const age = parseInt(member.age || '0');
             return age >= bracket.minAge && age <= bracket.maxAge;
           }
-          return member[key] === value || 
-                 (key === 'endorsedBy' && member.endorsed_by === value);
+          if (key === 'endorsedBy') {
+            // Check the field_worker.name field
+            const fieldWorkerName = member.field_worker?.name || '';
+            const isMatch = fieldWorkerName.trim().toLowerCase() === value.trim().toLowerCase();
+            console.log('Comparing:', {
+              memberName: member.full_name,
+              fieldWorkerName,
+              filterValue: value,
+              isMatch,
+              memberData: member // Log full member data for debugging
+            });
+            return isMatch;
+          }
+          return member[key] === value;
         });
       }
     });
@@ -560,9 +581,9 @@ const MembersPage = () => {
                         onChange={(e) => handleFilterChange('endorsedBy', e.target.value)}
                       >
                         <option value="">All Field Workers</option>
-                        {uniqueEndorsedBy.map((endorser) => (
-                          <option key={endorser} value={endorser}>
-                            {endorser}
+                        {fieldWorkers.map((worker) => (
+                          <option key={worker.id} value={worker.name}>
+                            {worker.name}
                           </option>
                         ))}
                       </select>
