@@ -23,6 +23,8 @@ const MembersPage = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewMember, setViewMember] = useState(null);
 
   const initialMemberState = {
     application_number: '',
@@ -437,6 +439,16 @@ const MembersPage = () => {
     setMembers(members.filter(m => m.applicationNumber !== applicationNumber));
   };
 
+  const handleMemberClick = (member) => {
+    setViewMember(member);
+    setViewOpen(true);
+  };
+
+  const handleViewClose = () => {
+    setViewOpen(false);
+    setViewMember(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -648,7 +660,11 @@ const MembersPage = () => {
                           </tr>
                         ) : (
                           filteredMembers.map((member) => (
-                            <tr key={member.id} className="group hover:bg-gray-50 w-full">
+                            <tr 
+                              key={member.id} 
+                              className="group hover:bg-gray-50 w-full cursor-pointer transition-colors"
+                              onClick={() => handleMemberClick(member)}
+                            >
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 group-hover:bg-gray-50">
                                 {member.full_name || 'N/A'}
                               </td>
@@ -668,10 +684,10 @@ const MembersPage = () => {
                                 {member.branch || 'N/A'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.last_contribution_date ? new Date(member.last_contribution_date).toLocaleDateString() : 'N/A'}
+                                {member.last_contribution_date ? new Date(member.last_contribution_date).toLocaleDateString() : '--'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.next_due_date ? new Date(member.next_due_date).toLocaleDateString() : 'N/A'}
+                                {member.next_due_date ? new Date(member.next_due_date).toLocaleDateString() : '--'}
                               </td>
                             </tr>
                           ))
@@ -1344,7 +1360,279 @@ const MembersPage = () => {
         </div>
         </div>
       </Dialog>
+
+      {/* View Member Dialog */}
+      <Dialog 
+        open={viewOpen} 
+        onClose={handleViewClose} 
+        maxWidth="md" 
+        fullWidth
+        className="relative z-50"
+        aria-labelledby="view-member-dialog-title"
+      >
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6">
+              <div>
+                <div className="mt-3 text-center sm:mt-0 sm:text-left">
+                  <h3 className="text-base font-semibold leading-6 text-gray-900" id="view-member-dialog-title">
+                    Member Details
+                  </h3>
+                  <div className="mt-2">
+                    {viewMember && (
+                      <div className="space-y-6">
+                        <div className="border-b border-gray-200 pb-4 mb-4">
+                          <div className="flex items-center space-x-6">
+                            <div className="shrink-0">
+                              {viewMember.picture ? (
+                                <img
+                                  className="h-24 w-24 object-cover rounded-full border-2 border-gray-300"
+                                  src={viewMember.picture}
+                                  alt="Member"
+                                />
+                              ) : (
+                                <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                                  <span className="text-sm">No photo</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-lg font-semibold text-gray-900">{viewMember.full_name || 'N/A'}</h4>
+                              <p className="text-sm text-gray-500">Application #: {viewMember.application_number || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 mb-4">Personal Information</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.full_name || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Nickname</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.nickname || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.age || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.contact_number || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.branch || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.program || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Age Bracket</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.age_bracket || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Contribution Amount</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.contribution_amount ? `${viewMember.contribution_amount} PHP` : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Availment Period</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.availment_period || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Date Applied</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.date_applied ? new Date(viewMember.date_applied).toLocaleDateString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Complete Address</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.complete_address || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Provincial Address</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.provincial_address || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.date_of_birth ? new Date(viewMember.date_of_birth).toLocaleDateString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Place of Birth</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.place_of_birth || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.sex || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Civil Status</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.civil_status || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Spouse Name</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.spouse_name || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Spouse Date of Birth</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.spouse_dob ? new Date(viewMember.spouse_dob).toLocaleDateString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Church Affiliation</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.church_affiliation || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Education Attainment</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.education_attainment || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Present Employment</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.present_employment || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Employer Name</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.employer_name || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="sm:col-span-6">
+                          <h4 className="text-sm font-medium text-gray-900 mb-4">Beneficiary Information</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Beneficiary Name</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.beneficiary_name || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Beneficiary Date of Birth</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.beneficiary_dob ? new Date(viewMember.beneficiary_dob).toLocaleDateString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Beneficiary Age</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.beneficiary_age || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Relationship to Member</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.beneficiary_relationship || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="sm:col-span-6">
+                          <h4 className="text-sm font-medium text-gray-900 mb-4">Staff Information</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Date Paid</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.date_paid ? new Date(viewMember.date_paid).toLocaleDateString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Received By</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.received_by || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">O.R. Number</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.or_number || 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Endorsed By (Field Worker)</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.field_worker ? viewMember.field_worker.name : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Last Contribution Date</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.last_contribution_date ? new Date(viewMember.last_contribution_date).toLocaleDateString() : '--'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Next Due Date</label>
+                              <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {viewMember.next_due_date ? new Date(viewMember.next_due_date).toLocaleDateString() : '--'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-5 sm:mt-6">
+                      <button
+                        type="button"
+                        className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                        onClick={handleViewClose}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Dialog>
     </div>
-)};
+  );
+};
 
 export default MembersPage;
