@@ -4,7 +4,7 @@ import { authService } from "../../services/api";
 
 export default function Login() {
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -24,7 +24,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
   
-    if (!formData.email || !formData.password) {
+    if (!formData.username || !formData.password) {
       setError("Please fill in all fields");
       return;
     }
@@ -33,7 +33,7 @@ export default function Login() {
   
     try {
       const response = await authService.login({
-        email: formData.email,
+        username: formData.username,
         password: formData.password,
       });
   
@@ -48,7 +48,7 @@ export default function Login() {
       
       if (err.response?.status === 400) {
         const errorMsg = err.response.data?.error || err.response.data?.message;
-        setError(errorMsg || "Invalid email or password");
+        setError(errorMsg || "Invalid username or password");
       } else if (err.message === "Network Error") {
         setError("Cannot connect to the server. Please check your connection.");
       } else {
@@ -84,15 +84,15 @@ export default function Login() {
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1">Username</label>
             <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={formData.email}
+              type="text"
+              name="username"
+              placeholder="Username"
+              value={formData.username}
               onChange={handleChange}
               className={`w-full px-3 py-2 rounded bg-white text-gray-900 focus:outline-none border ${
-                error && error !== "Invalid email or password"
+                error
                   ? "border-red-500"
                   : "border-gray-300"
               }`}
@@ -116,7 +116,7 @@ export default function Login() {
               required
               disabled={isLoading}
             />
-            {error === "Invalid email or password" && (
+            {error === "Invalid username or password" && (
               <p className="mt-1 text-sm text-red-300">
                 <Link to="/forgot-password" className="hover:underline">
                   Forgot your password?
@@ -164,12 +164,7 @@ export default function Login() {
         <div className="mt-4 text-sm text-center">
           <p className="text-gray-300">
             Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-semibold text-white hover:underline"
-            >
-              Sign up
-            </Link>
+              Please ask the Admin to create your account
           </p>
         </div>
       </div>

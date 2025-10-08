@@ -2,20 +2,44 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../authentication/user.js';
+import { Sequelize } from 'sequelize';
 
 const router = express.Router();
 
 // @route   POST api/auth/signup
-// @desc    Register a user
-// @access  Public
+// @desc    Register a user (Staff accounts)
+// @access  Private (Role 3 - Account Manager only)
 router.post('/signup', async (req, res) => {
-  const { name, email, phone, address, password } = req.body;
+  // Check for authentication token
+  const token = req.header('x-auth-token');
+  
+  if (!token) {
+    return res.status(401).json({ msg: 'No token, authorization denied' });
+  }
+  
+  try {
+    // Verify token and check role
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Only role 3 (Account Manager) can create accounts
+    if (decoded.user.role !== 3) {
+      return res.status(403).json({ msg: 'Access denied. Only account managers can create staff accounts.' });
+    }
+  } catch (err) {
+    return res.status(401).json({ msg: 'Token is not valid' });
+  }
+  
+  const { name, username, email, phone, address, password } = req.body;
 
   try {
-    let user = await User.findOne({ where: { email } });
+    let user = await User.findOne({
+      where: {
+        [Sequelize.Op.or]: [{ username: username }, { email: email }]
+      }
+    });
 
     if (user) {
-      return res.status(400).json({ msg: 'User already exists' });
+      return res.status(400).json({ msg: 'User with that username or email already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -23,6 +47,7 @@ router.post('/signup', async (req, res) => {
 
     user = await User.create({
       name,
+      username,
       email,
       phone,
       address,
@@ -46,8 +71,15 @@ router.post('/signup', async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Signup error:', err);
+    
+    // Handle Sequelize validation errors
+    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
+      const errors = err.errors.map(e => e.message);
+      return res.status(400).json({ msg: errors.join(', ') });
+    }
+    
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 
@@ -59,7 +91,7 @@ router.post('/login', async (req, res) => {
 
   try {
     // Note: The login form uses 'username', but the model uses 'email'. Adjusting here.
-    let user = await User.findOne({ where: { email: username } });
+    let user = await User.findOne({ where: { username } });
 
     if (!user) {
       return res.status(400).json({ msg: 'Invalid Credentials' });
@@ -88,8 +120,15 @@ router.post('/login', async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Signup error:', err);
+    
+    // Handle Sequelize validation errors
+    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
+      const errors = err.errors.map(e => e.message);
+      return res.status(400).json({ msg: errors.join(', ') });
+    }
+    
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 

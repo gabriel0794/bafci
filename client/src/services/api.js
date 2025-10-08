@@ -3,10 +3,12 @@ const API_URL = 'http://localhost:5000/api';
 export const authService = {
     async signup(userData) {
         try {
+            const token = this.getAuthToken();
             const response = await fetch(`${API_URL}/auth/signup`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'x-auth-token': token || '',
                 },
                 body: JSON.stringify(userData),
             });
@@ -40,7 +42,7 @@ export const authService = {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              username: credentials.email, // Make sure this matches your backend's expected field
+              username: credentials.username,
               password: credentials.password,
             }),
           });

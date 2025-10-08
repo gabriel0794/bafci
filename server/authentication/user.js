@@ -11,6 +11,11 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
   email: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -32,7 +37,7 @@ const User = sequelize.define('User', {
   role: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    // 1 for admin, 2 for staff
+    // 1 = admin (full access), 2 = staff (regular user), 3 = account manager (can only create staff accounts)
     defaultValue: 2,
   },
 }, {
