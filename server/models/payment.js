@@ -28,11 +28,6 @@ Payment.init({
     field: 'payment_date',
     defaultValue: DataTypes.NOW
   },
-  paymentType: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    field: 'payment_type'
-  },
   referenceNumber: {
     type: DataTypes.STRING,
     field: 'reference_number',
@@ -45,6 +40,16 @@ Payment.init({
   status: {
     type: DataTypes.ENUM('pending', 'completed', 'failed'),
     defaultValue: 'completed'
+  },
+  periodStart: {
+    type: DataTypes.DATEONLY,
+    field: 'period_start',
+    comment: 'Start date of the payment period'
+  },
+  nextPayment: {
+    type: DataTypes.DATEONLY,
+    field: 'next_payment',
+    comment: 'Next payment due date'
   },
   createdAt: {
     type: DataTypes.DATE,

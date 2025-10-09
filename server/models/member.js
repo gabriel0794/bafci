@@ -46,6 +46,7 @@ Member.init({
     type: DataTypes.DATEONLY,
     field: 'date_of_birth'
   },
+
   placeOfBirth: {
     type: DataTypes.STRING,
     field: 'place_of_birth'

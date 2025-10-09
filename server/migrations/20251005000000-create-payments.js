@@ -32,23 +32,17 @@ export default {
         field: 'payment_date',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
-      paymentType: {
-        type: DataTypes.ENUM('membership_fee', 'monthly_contribution'),
-        allowNull: false,
-        field: 'payment_type',
-        defaultValue: 'monthly_contribution'
-      },
       periodStart: {
         type: Sequelize.DATEONLY,
         allowNull: true,
         field: 'period_start',
-        comment: 'Start date of the payment period (for recurring payments)'
+        comment: 'Start date of the payment period'
       },
-      periodEnd: {
+      nextPayment: {
         type: Sequelize.DATEONLY,
         allowNull: true,
-        field: 'period_end',
-        comment: 'End date of the payment period (for recurring payments)'
+        field: 'next_payment',
+        comment: 'Next payment due date'
       },
       status: {
         type: DataTypes.ENUM('pending', 'paid', 'overdue'),
@@ -82,7 +76,7 @@ export default {
     await queryInterface.addIndex('payments', ['member_id']);
     await queryInterface.addIndex('payments', ['payment_date']);
     await queryInterface.addIndex('payments', ['status']);
-    await queryInterface.addIndex('payments', ['payment_type']);
+    await queryInterface.addIndex('payments', ['next_payment']);
   },
 
   async down(queryInterface, Sequelize) {

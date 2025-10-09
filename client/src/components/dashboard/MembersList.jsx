@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Dialog } from '@headlessui/react';
 
 export default function MembersList() {
   const [members, setMembers] = useState([]);
@@ -13,7 +14,20 @@ export default function MembersList() {
   const [branches, setBranches] = useState([]);
   const [fieldWorkers, setFieldWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewMember, setViewMember] = useState(null);
   const navigate = useNavigate();
+
+  // View member dialog handlers
+  const handleViewOpen = (member) => {
+    setViewMember(member);
+    setViewOpen(true);
+  };
+
+  const handleViewClose = () => {
+    setViewOpen(false);
+    setViewMember(null);
+  };
 
   // Fetch data on component mount
   useEffect(() => {
@@ -101,7 +115,7 @@ export default function MembersList() {
   };
 
   const handleMemberClick = (member) => {
-    navigate(`/members/${member.id}`);
+    handleViewOpen(member);
   };
 
   const formatDate = (dateString) => {
@@ -117,6 +131,172 @@ export default function MembersList() {
   
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
+      {/* View Member Dialog */}
+      <Dialog 
+        open={viewOpen} 
+        onClose={handleViewClose} 
+        maxWidth="md" 
+        fullWidth
+        className="relative z-50 print:z-0"
+        aria-labelledby="view-member-dialog-title"
+      >
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" />
+        <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 print:shadow-none">
+              <div className="print:p-6">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-200">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Member Information</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Application #: {viewMember?.application_number || 'N/A'} | 
+                      Date: {new Date().toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    {viewMember?.picture && (
+                      <img
+                        className="h-16 w-16 object-cover rounded-full border-2 border-gray-300"
+                        src={viewMember.picture}
+                        alt="Member"
+                      />
+                    )}
+                    <button
+                      onClick={window.print}
+                      className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 print:hidden"
+                    >
+                      Print / Save as PDF
+                    </button>
+                  </div>
+                </div>
+
+                {viewMember && (
+                  <div className="space-y-6">
+                    {/* Member Summary */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center space-x-4 mb-3">
+                        <div className="flex-shrink-0">
+                          {viewMember.picture ? (
+                            <img
+                              className="h-32 w-32 rounded-full border-2 border-gray-300 object-cover"
+                              src={viewMember.picture}
+                              alt={viewMember.full_name || 'Member'}
+                            />
+                          ) : (
+                            <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                              <span className="text-xs text-center px-1">No Photo</span>
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900">{viewMember.full_name || 'N/A'}</h3>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-500">Age:</span> {viewMember.age || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-500">Contact:</span> {viewMember.contact_number || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-500">Branch:</span> {viewMember.branch || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-500">Program:</span>{' '}
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            viewMember.program?.toLowerCase() === 'jacinth' 
+                              ? 'bg-green-100 text-green-800' 
+                              : viewMember.program?.toLowerCase() === 'chalcedony'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {viewMember.program || 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-500">Date Applied:</span> {viewMember.date_applied ? new Date(viewMember.date_applied).toLocaleDateString() : 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Personal Information */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 className="text-lg font-medium text-gray-900">Personal Information</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div className="space-y-2">
+                            <div><span className="font-medium">Full Name:</span> {viewMember.full_name || 'N/A'}</div>
+                            <div><span className="font-medium">Nickname:</span> {viewMember.nickname || 'N/A'}</div>
+                            <div><span className="font-medium">Date of Birth:</span> {viewMember.date_of_birth ? new Date(viewMember.date_of_birth).toLocaleDateString() : 'N/A'}</div>
+                            <div><span className="font-medium">Place of Birth:</span> {viewMember.place_of_birth || 'N/A'}</div>
+                            <div><span className="font-medium">Sex:</span> {viewMember.sex || 'N/A'}</div>
+                            <div><span className="font-medium">Civil Status:</span> {viewMember.civil_status || 'N/A'}</div>
+                            <div><span className="font-medium">Spouse Name:</span> {viewMember.spouse_name || 'N/A'}</div>
+                            <div><span className="font-medium">Spouse DOB:</span> {viewMember.spouse_dob ? new Date(viewMember.spouse_dob).toLocaleDateString() : 'N/A'}</div>
+                          </div>
+                          <div className="space-y-2">
+                            <div><span className="font-medium">Complete Address:</span> {viewMember.complete_address || 'N/A'}</div>
+                            <div><span className="font-medium">Provincial Address:</span> {viewMember.provincial_address || 'N/A'}</div>
+                            <div><span className="font-medium">Church Affiliation:</span> {viewMember.church_affiliation || 'N/A'}</div>
+                            <div><span className="font-medium">Education:</span> {viewMember.education_attainment || 'N/A'}</div>
+                            <div><span className="font-medium">Employment:</span> {viewMember.present_employment || 'N/A'}</div>
+                            <div><span className="font-medium">Employer:</span> {viewMember.employer_name || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Beneficiary Information */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 className="text-lg font-medium text-gray-900">Beneficiary Information</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div><span className="font-medium">Name:</span> {viewMember.beneficiary_name || 'N/A'}</div>
+                          <div><span className="font-medium">Date of Birth:</span> {viewMember.beneficiary_dob ? new Date(viewMember.beneficiary_dob).toLocaleDateString() : 'N/A'}</div>
+                          <div><span className="font-medium">Age:</span> {viewMember.beneficiary_age || 'N/A'}</div>
+                          <div><span className="font-medium">Relationship:</span> {viewMember.beneficiary_relationship || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Staff Information */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 className="text-lg font-medium text-gray-900">Membership Details</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div><span className="font-medium">Contribution Amount:</span> {viewMember.contribution_amount ? `${viewMember.contribution_amount} PHP` : 'N/A'}</div>
+                          <div><span className="font-medium">Availment Period:</span> {viewMember.availment_period || 'N/A'}</div>
+                          <div><span className="font-medium">Date Paid:</span> {viewMember.date_paid ? new Date(viewMember.date_paid).toLocaleDateString() : 'N/A'}</div>
+                          <div><span className="font-medium">O.R. Number:</span> {viewMember.or_number || 'N/A'}</div>
+                          <div><span className="font-medium">Received By:</span> {viewMember.received_by || 'N/A'}</div>
+                          <div><span className="font-medium">Field Worker:</span> {viewMember.field_worker?.name || 'N/A'}</div>
+                          <div><span className="font-medium">Last Contribution:</span> {viewMember.last_contribution_date ? new Date(viewMember.last_contribution_date).toLocaleDateString() : '--'}</div>
+                          <div><span className="font-medium">Next Due Date:</span> {viewMember.next_due_date ? new Date(viewMember.next_due_date).toLocaleDateString() : '--'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="mt-5 sm:mt-6">
+                  <button
+                    type="button"
+                    className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                    onClick={handleViewClose}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Dialog>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
         <div>
           <h2 className="text-lg font-medium text-gray-900">Members List</h2>

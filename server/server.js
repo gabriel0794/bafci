@@ -10,6 +10,7 @@ import revenueRoutes from './routes/revenue.js';
 import branchRoutes from './routes/branch.js';
 import memberRoutes from './routes/member.js';
 import fieldWorkerRoutes from './routes/fieldWorker.js';
+import paymentRoutes from './routes/payment.js';
 
 // Load environment variables
 dotenv.config();
@@ -48,6 +49,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/revenue', revenueRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api', paymentRoutes); // Payment routes - must come before member routes
 app.use('/api/members', memberRoutes);
 app.use('/api/field-workers', fieldWorkerRoutes);
 
