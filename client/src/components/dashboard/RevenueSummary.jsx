@@ -133,22 +133,22 @@ const RevenueSummary = () => {
         </button>
       </div>
       {isVisible && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full h-[100px] items-center">
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</div>
-            <div className="mt-1 text-xl font-semibold text-gray-900 truncate">
+            <div className="text-xl font-semibold text-gray-900 truncate mt-1">
               {formatCurrency(period.total)}
             </div>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Added</div>
-            <div className="mt-1 text-xl font-semibold text-green-600 truncate">
+            <div className="text-xl font-semibold text-green-600 truncate mt-1">
               {formatCurrency(period.added)}
             </div>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</div>
-            <div className="mt-1 text-xl font-semibold text-red-600 truncate">
+            <div className="text-xl font-semibold text-red-600 truncate mt-1">
               {formatCurrency(period.expenses)}
             </div>
           </div>
@@ -185,8 +185,8 @@ const RevenueSummary = () => {
   };
 
   return (
-    <div className="mt-8 w-full">
-      <div className="flex justify-between items-center mb-4">
+    <div className="mt-8 w-full h-[500px]">
+      <div className="flex justify-between items-center mb-4 h-[50px]">
         <h2 className="text-lg font-medium text-gray-900">Revenue Overview</h2>
         <div className="flex space-x-2">
           <button

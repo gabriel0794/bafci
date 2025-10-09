@@ -73,9 +73,9 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       groupedData[date] += parseFloat(item.amount);
     });
 
-    // Convert to arrays and sort in descending order (newest first)
+    // Convert to arrays and sort in chronological order (oldest to newest)
     const sortedEntries = Object.entries(groupedData)
-      .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA));
+      .sort(([dateA], [dateB]) => new Date(dateA) - new Date(dateB));
       
     const labels = sortedEntries.map(([date]) => date);
     const values = sortedEntries.map(([_, amount]) => amount);
@@ -194,20 +194,18 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     },
     scales: {
       x: {
-        reverse: true, // This makes the x-axis go from right to left
+        // Remove reverse to show dates in natural order (left to right)
         grid: {
           display: false,
-          drawBorder: true,
-          borderColor: '#E5E7EB',
-          color: '#E5E7EB'
+          drawBorder: false,
         },
         ticks: {
           color: '#6B7280',
-          maxRotation: 0,
-          padding: 8,
           font: {
-            size: 11
+            size: 10,
+            family: 'Inter, system-ui, -apple-system, sans-serif'
           },
+          padding: 2,
           callback: function(value, index, values) {
             const date = new Date(this.getLabelForValue(value));
             const today = new Date();
@@ -226,26 +224,29 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       },
       y: {
         grid: {
-          color: 'rgba(209, 213, 219, 0.5)',
-          drawBorder: true,
+          color: 'rgba(229, 231, 235, 0.8)',
+          drawBorder: false,
           drawTicks: false,
-          borderColor: '#E5E7EB',
+          borderDash: [2, 2],
+          tickLength: 0,
         },
         ticks: {
-          color: '#6B7280',
-          callback: function(value) {
-            return new Intl.NumberFormat('en-PH', {
-              style: 'currency',
-              currency: 'PHP',
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            }).format(value);
-          },
-          maxTicksLimit: 5,
-          padding: 8,
+          color: '#9CA3AF',
           font: {
-            size: 11,
+            size: 9,
+            family: 'Inter, system-ui, -apple-system, sans-serif'
           },
+          padding: 2,
+          maxTicksLimit: 5,
+          callback: function(value) {
+            // For the reference style, we'll show shorter currency format
+            if (value >= 1000000) {
+              return '₱' + (value / 1000000).toFixed(1) + 'M';
+            } else if (value >= 1000) {
+              return '₱' + (value / 1000).toFixed(0) + 'K';
+            }
+            return '₱' + value;
+          }
         },
       },
     },
@@ -255,8 +256,10 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     },
     elements: {
       line: {
-        borderWidth: 2,
+        borderWidth: 3,
         tension: 0.4,
+        fill: true,
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
       },
       point: {
         radius: 0,
@@ -268,10 +271,10 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     },
     layout: {
       padding: {
-        top: 10,
-        right: 10,
-        bottom: 10,
-        left: 10,
+        top: 2,
+        right: 2,
+        bottom: 2,
+        left: 2,
       },
     },
     animation: {
@@ -291,11 +294,10 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4 h-full flex flex-col border border-gray-200">
-      <div className="flex justify-between items-center mb-4">
+    <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col h-full">
+      <div className="flex justify-between items-center mb-2">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Daily Revenue</h3>
-          <p className="text-sm text-gray-500">Total revenue over time</p>
+          <h2 className="text-md font-medium text-gray-900">Revenue Chart</h2>
         </div>
         <div className="flex space-x-1">
           {timeRanges.map((range) => (
@@ -313,7 +315,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
           ))}
         </div>
       </div>
-      <div className="flex-1 w-full min-h-[300px] relative">
+      <div className="flex-1 w-full relative" style={{ height: 'calc(100% - 40px)' }}>
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
