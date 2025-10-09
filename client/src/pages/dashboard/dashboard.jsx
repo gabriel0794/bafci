@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api';
 import RevenueSummary from '../../components/dashboard/RevenueSummary';
 import RevenueChart from '../../components/dashboard/RevenueChart';
+import MembersList from '../../components/dashboard/MembersList';
 import Navbar from '../../components/Navbar';
 
 
@@ -61,7 +62,7 @@ export default function Dashboard() {
 
           <main className="space-y-6">
             {/* Revenue Summary and Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col h-[330px]">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Overview</h2>
                 <div className="flex-1">
@@ -77,6 +78,11 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
+            </div>
+            
+            {/* Members List */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <MembersList />
             </div>
         </main>
       </div>

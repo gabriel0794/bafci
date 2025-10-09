@@ -675,7 +675,15 @@ const MembersPage = () => {
                                 {member.date_applied ? new Date(member.date_applied).toLocaleDateString() : 'N/A'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.program || 'N/A'}
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  member.program?.toLowerCase() === 'jacinth' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : member.program?.toLowerCase() === 'chalcedony'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {member.program || 'N/A'}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {member.field_worker ? member.field_worker.name : 'N/A'}
@@ -1432,7 +1440,16 @@ const MembersPage = () => {
                           <span className="font-medium text-gray-500">Branch:</span> {viewMember.branch || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium text-gray-500">Program:</span> {viewMember.program || 'N/A'}
+                          <span className="font-medium text-gray-500">Program:</span>{' '}
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            viewMember.program?.toLowerCase() === 'jacinth' 
+                              ? 'bg-green-100 text-green-800' 
+                              : viewMember.program?.toLowerCase() === 'chalcedony'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {viewMember.program || 'N/A'}
+                          </span>
                         </div>
                         <div>
                           <span className="font-medium text-gray-500">Date Applied:</span> {viewMember.date_applied ? new Date(viewMember.date_applied).toLocaleDateString() : 'N/A'}
