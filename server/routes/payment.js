@@ -2,11 +2,11 @@ import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 
-const { Payment, Member } = models;
+const { Payment, Member, sequelize } = models;
 const router = express.Router();
 
-// Get all payments for a specific member
-router.get('/members/:memberId/payments', auth, async (req, res) => {
+// Get payment history for a specific member (payment history modal)
+router.get('/history/:memberId', auth, async (req, res) => {
   try {
     const { memberId } = req.params;
     
@@ -72,20 +72,20 @@ router.post('/payments', auth, async (req, res) => {
     const formattedNextPaymentDate = nextPaymentDate.toISOString().split('T')[0];
 
     try {
-      // Create payment with periodStart and nextPayment dates
+      // Create payment with period_start and next_payment dates
       const payment = await Payment.create({
         memberId: effectiveMemberId,
         amount: parseFloat(amount),
         paymentDate: formattedPaymentDate,
-        periodStart: formattedPaymentDate, // Set periodStart same as paymentDate
-        nextPayment: formattedNextPaymentDate,
-        referenceNumber: referenceNumber || reference_number || null, // Support both camelCase and snake_case
+        periodStart: formattedPaymentDate, // Set period_start same as payment_date
+        nextPayment: formattedNextPaymentDate, // Set next_payment to 1 month after payment_date
+        referenceNumber: referenceNumber || reference_number || null,
         notes: notes || null,
         status: 'completed',
         createdBy: req.user.id
       });
 
-      // Update member's last contribution date
+      // Update member's last contribution date (but not the period fields)
       await member.update({
         lastContributionDate: formattedPaymentDate
       });
@@ -131,6 +131,44 @@ router.post('/payments', auth, async (req, res) => {
     res.status(500).json({ 
       message: 'Server error while processing payment',
       error: error.message 
+    });
+  }
+});
+
+// Get latest payment period data for all members (for members list)
+router.get('/member-periods', auth, async (req, res) => {
+  try {
+    // Using raw SQL to get the latest payment for each member
+    const [results] = await sequelize.query(`
+      SELECT DISTINCT ON (member_id) 
+        member_id,
+        period_start,
+        next_payment,
+        payment_date
+      FROM payments
+      WHERE period_start IS NOT NULL AND next_payment IS NOT NULL
+      ORDER BY member_id, payment_date DESC
+    `);
+
+    // Format the response to be keyed by member_id for easy lookup
+    const periodData = {};
+    results.forEach(payment => {
+      if (payment.member_id) {
+        periodData[payment.member_id] = {
+          period_start: payment.period_start,
+          next_payment: payment.next_payment,
+          last_payment_date: payment.payment_date
+        };
+      }
+    });
+
+    res.json(periodData);
+  } catch (error) {
+    console.error('Error fetching member payment periods:', error);
+    res.status(500).json({ 
+      message: 'Error fetching member payment periods',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

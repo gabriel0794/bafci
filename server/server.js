@@ -48,8 +48,8 @@ app.get('/', (req, res) => res.send('API Running'));
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/revenue', revenueRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/branches', branchRoutes);
-app.use('/api', paymentRoutes); // Payment routes - must come before member routes
 app.use('/api/members', memberRoutes);
 app.use('/api/field-workers', fieldWorkerRoutes);
 

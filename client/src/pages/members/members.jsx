@@ -10,6 +10,7 @@ import Navbar from '../../components/Navbar';
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
+  const [periodData, setPeriodData] = useState({}); // To store period data keyed by member ID
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     ageBracket: '',
@@ -159,74 +160,111 @@ const MembersPage = () => {
     }));
   };
 
+  // Fetch payment period data for all members
+  const fetchPaymentPeriods = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/payments/member-periods', {
+        headers: { 
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPeriodData(data);
+      } else {
+        console.error('Failed to fetch payment periods:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching payment periods:', error);
+    }
+  };
+
+  // Fetch members data
+  const fetchMembers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Fetch members
+      const response = await fetch('http://localhost:5000/api/members', {
+        headers: {
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch members');
+      }
+      
+      const data = await response.json();
+      setMembers(data);
+      setFilteredMembers(data);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch branches data
+  const fetchBranches = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/branches', {
+        headers: { 'x-auth-token': token }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBranches(data);
+      } else {
+        console.error('Failed to fetch branches');
+      }
+    } catch (error) {
+      console.error('Error fetching branches:', error);
+    }
+  };
+
+  // Fetch field workers data
+  const fetchFieldWorkers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/field-workers', {
+        headers: { 'x-auth-token': token }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFieldWorkers(data);
+      } else {
+        console.error('Failed to fetch field workers');
+      }
+    } catch (error) {
+      console.error('Error fetching field workers:', error);
+    }
+  };
+
+  // Initial data loading
   useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/branches', {
-          headers: {
-            'x-auth-token': token,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setBranches(data);
-        } else {
-          console.error('Failed to fetch branches');
-        }
-      } catch (error) {
-        console.error('Error fetching branches:', error);
-      }
-    };
-
-    const fetchFieldWorkers = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/field-workers', {
-          headers: {
-            'x-auth-token': token,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setFieldWorkers(data);
-        } else {
-          console.error('Failed to fetch field workers');
-        }
-      } catch (error) {
-        console.error('Error fetching field workers:', error);
-      }
-    };
-
-    const fetchMembers = async () => {
+    const loadInitialData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/members', {
-          headers: {
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch members');
-        }
-        
-        const data = await response.json();
-        setMembers(data);
-        setFilteredMembers(data);
+        await Promise.all([
+          fetchBranches(),
+          fetchFieldWorkers(),
+          fetchMembers(),
+          fetchPaymentPeriods()
+        ]);
       } catch (error) {
-        console.error('Error fetching members:', error);
-        // Optionally show error to user
+        console.error('Error loading data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBranches();
-    fetchMembers();
-    fetchFieldWorkers();
+    loadInitialData();
   }, []);
 
   // Filter members based on search term and filters
@@ -489,7 +527,7 @@ const MembersPage = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const response = await axios.get(`http://localhost:5000/api/members/${member.id}/payments`, {
+      const response = await axios.get(`http://localhost:5000/api/payments/history/${member.id}`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -798,7 +836,7 @@ const MembersPage = () => {
                             Branch
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Last Contribution Date
+                            Period Start
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Next Due Date
@@ -854,10 +892,14 @@ const MembersPage = () => {
                                 {member.branch || 'N/A'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.last_contribution_date ? new Date(member.last_contribution_date).toLocaleDateString() : '--'}
+                                {periodData[member.id]?.period_start 
+                                  ? new Date(periodData[member.id].period_start).toLocaleDateString() 
+                                  : '--'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.next_due_date ? new Date(member.next_due_date).toLocaleDateString() : '--'}
+                                {periodData[member.id]?.next_payment 
+                                  ? new Date(periodData[member.id].next_payment).toLocaleDateString() 
+                                  : '--'}
                               </td>
                             </tr>
                           ))
