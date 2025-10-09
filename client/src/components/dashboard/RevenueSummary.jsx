@@ -8,6 +8,7 @@ const RevenueSummary = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activePeriod, setActivePeriod] = useState('today'); // 'today', 'weekly', 'monthly', 'yearly'
+  const [timeRange, setTimeRange] = useState('1M'); // For chart time range
 
   // Calculate all date ranges at the top level
   const now = new Date();
@@ -65,11 +66,13 @@ const RevenueSummary = () => {
   // Filter revenues by date range
   const filterRevenuesByDateRange = (startDate, endDate) => {
     if (!revenues) return [];
-    return revenues.filter(rev => {
-      if (!rev.date) return false;
-      const revDate = new Date(rev.date);
-      return revDate >= startDate && revDate <= endDate;
-    });
+    return revenues
+      .filter(rev => {
+        if (!rev.date) return false;
+        const revDate = new Date(rev.date);
+        return revDate >= startDate && revDate <= endDate;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
   if (loading) return <div>Loading revenue data...</div>;
@@ -111,39 +114,41 @@ const RevenueSummary = () => {
 
   // Helper function to render time period section
   const renderTimePeriod = (title, period, isVisible, toggleFn) => (
-    <div className="mb-6">
-      <button
-        onClick={toggleFn}
-        className="flex items-center text-md font-bold text-gray-700 mb-3 hover:text-indigo-600 transition-colors"
-      >
-        {title}
-        <svg
-          className={`ml-2 w-4 h-4 transition-transform ${isVisible ? 'transform rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        <button
+          onClick={toggleFn}
+          className="text-gray-500 hover:text-indigo-600 transition-colors p-1 -mr-2"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          <svg
+            className={`w-5 h-5 transition-transform ${isVisible ? 'transform rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
       {isVisible && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm font-medium text-gray-500">Total Revenue</div>
-            <div className="mt-1 text-2xl font-semibold text-gray-900">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</div>
+            <div className="mt-1 text-xl font-semibold text-gray-900 truncate">
               {formatCurrency(period.total)}
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm font-medium text-gray-500">Total Added</div>
-            <div className="mt-1 text-2xl font-semibold text-green-600">
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Added</div>
+            <div className="mt-1 text-xl font-semibold text-green-600 truncate">
               {formatCurrency(period.added)}
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm font-medium text-gray-500">Total Expenses</div>
-            <div className="mt-1 text-2xl font-semibold text-red-600">
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</div>
+            <div className="mt-1 text-xl font-semibold text-red-600 truncate">
               {formatCurrency(period.expenses)}
             </div>
           </div>
@@ -169,15 +174,25 @@ const RevenueSummary = () => {
 
   const { title, data } = getActivePeriodData();
 
+  // Prepare data for the chart (last 30 days by default)
+  const getChartData = () => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    
+    // In a real app, you would filter based on the selected timeRange
+    return filterRevenuesByDateRange(startDate, endDate);
+  };
+
   return (
-    <div className="mt-8 w-1/2 position-absolute">
+    <div className="mt-8 w-full">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-medium text-gray-900">Revenue Overview</h2>
         <div className="flex space-x-2">
           <button
             onClick={() => setPeriod('today')}
             className={`px-3 py-1 text-sm rounded-md ${
-              activePeriod === 'today' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              activePeriod === 'today' ? 'bg-green-200 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Today
@@ -185,7 +200,7 @@ const RevenueSummary = () => {
           <button
             onClick={() => setPeriod('weekly')}
             className={`px-3 py-1 text-sm rounded-md ${
-              activePeriod === 'weekly' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              activePeriod === 'weekly' ? 'bg-green-200 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Weekly
@@ -193,7 +208,7 @@ const RevenueSummary = () => {
           <button
             onClick={() => setPeriod('monthly')}
             className={`px-3 py-1 text-sm rounded-md ${
-              activePeriod === 'monthly' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              activePeriod === 'monthly' ? 'bg-green-200 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Monthly
@@ -201,7 +216,7 @@ const RevenueSummary = () => {
           <button
             onClick={() => setPeriod('yearly')}
             className={`px-3 py-1 text-sm rounded-md ${
-              activePeriod === 'yearly' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              activePeriod === 'yearly' ? 'bg-green-200 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Yearly
@@ -209,8 +224,9 @@ const RevenueSummary = () => {
         </div>
       </div>
       
-      {/* Show the active period */}
-      {renderTimePeriod(title, data, true, () => {})}
+      <div className="w-full">
+        {renderTimePeriod(title, data, true, () => {})}
+      </div>
     </div>
   );
 };

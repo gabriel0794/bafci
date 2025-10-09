@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api';
 import RevenueSummary from '../../components/dashboard/RevenueSummary';
+import RevenueChart from '../../components/dashboard/RevenueChart';
 import Navbar from '../../components/Navbar';
+
 
 export default function Dashboard() {
   const [userData, setUserData] = useState(null);
+  const [timeRange, setTimeRange] = useState('1M'); // '1D', '5D', '1M', '1Y', '5Y', 'MAX'
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,32 +48,39 @@ export default function Dashboard() {
       <Navbar activePage="dashboard" />
 
 
-      <div className="py-10">
-        <header>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome {userData?.name}!
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <header className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+              Welcome back, {userData?.name}!
             </h1>
-            <p className="mt-2 text-sm text-gray-600">
-              View your dashboard overview below.
+            <p className="mt-1 text-sm text-gray-600">
+              Here's what's happening with your business today
             </p>
-          </div>
-        </header>
+          </header>
 
-        <main>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Revenue Summary */}
-            <RevenueSummary />
-            
-            {/* Additional dashboard content */}
-            <div className="mt-8">
-              <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 flex items-center justify-center">
-                <p className="text-gray-500">Additional dashboard content goes here</p>
+          <main className="space-y-6">
+            {/* Revenue Summary and Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
+              <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col h-[300px]">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Overview</h2>
+                <div className="flex-1">
+                  <RevenueSummary />
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Chart</h2>
+                <div className="flex-1 min-h-0">
+                  <RevenueChart 
+                    timeRange={timeRange}
+                    onTimeRangeChange={setTimeRange}
+                  />
+                </div>
               </div>
             </div>
-          </div>
         </main>
       </div>
     </div>
+    </div>
   );
-}
+};

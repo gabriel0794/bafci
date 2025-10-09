@@ -32,7 +32,7 @@ const corsOptions = {
   origin: 'http://localhost:5173', // Your frontend URL
   credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-auth-token']
+  allowedHeaders: ['Content-Type', 'x-auth-token', 'authorization', 'Authorization']
 };
 
 app.use(cors(corsOptions));
