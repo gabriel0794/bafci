@@ -5,6 +5,7 @@ import Dashboard from './pages/dashboard/dashboard';
 import RevenuePage from './pages/revenue';
 import { authService } from './services/api';
 import MembersPage from './pages/members/members';
+import PaymentsPage from './pages/payments';
 
 // Create a protected route component
 const ProtectedRoute = ({ children }) => {
@@ -50,6 +51,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MembersPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/payments',
+    element: (
+      <ProtectedRoute>
+        <PaymentsPage />
       </ProtectedRoute>
     ),
   },

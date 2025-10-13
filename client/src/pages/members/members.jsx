@@ -28,21 +28,11 @@ const MembersPage = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewMember, setViewMember] = useState(null);
   
-  // Payment dialog state
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentMember, setPaymentMember] = useState(null);
-  const [paymentHistory, setPaymentHistory] = useState([]);
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    amount: '',
-    payment_date: new Date().toISOString().split('T')[0],
-    reference_number: '',
-    notes: ''
-  });
+
 
   // Fullscreen image viewer state
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Alert state
   const [alert, setAlert] = useState({
@@ -570,78 +560,6 @@ const MembersPage = () => {
     setViewMember(null);
   };
 
-  // Payment dialog handlers
-  const handlePaymentOpen = async (member) => {
-    setPaymentMember(member);
-    setPaymentOpen(true);
-    setPaymentLoading(true);
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found. Please log in again.');
-      }
-
-      const response = await axios.get(`http://localhost:5000/api/payments/history/${member.id}`, {
-        headers: { 
-          'x-auth-token': token,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      setPaymentHistory(response.data);
-      
-      // Set default amount from member's contribution amount
-      setNewPayment(prev => ({
-        ...prev,
-        amount: member.contribution_amount || ''
-      }));
-    } catch (error) {
-      console.error('Error fetching payment history:', error);
-      
-      if (error.response) {
-        showAlert(
-          'Fetch Error',
-          `Error ${error.response.status}: ${error.response.data.message || 'Failed to fetch payment history'}`,
-          'error'
-        );
-      } else if (error.request) {
-        showAlert(
-          'Connection Error',
-          'No response from server. Please check your connection and try again.',
-          'error'
-        );
-      } else {
-        showAlert('Request Error', `Error: ${error.message}`, 'error');
-      }
-      
-      // Close the dialog on error
-      setPaymentOpen(false);
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const handlePaymentClose = () => {
-    setPaymentOpen(false);
-    setPaymentMember(null);
-    setPaymentHistory([]);
-    setNewPayment({
-      amount: '',
-      payment_date: new Date().toISOString().split('T')[0],
-      reference_number: '',
-      notes: ''
-    });
-  };
-
-  const handlePaymentChange = (e) => {
-    const { name, value } = e.target;
-    setNewPayment(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   // Helper function to show alerts
   const showAlert = (title, message, severity = 'info') => {
     setAlert({
@@ -657,502 +575,255 @@ const MembersPage = () => {
     setAlert(prev => ({ ...prev, open: false }));
   };
 
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault();
-    if (!paymentMember) return;
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found. Please log in again.');
-      }
-      
-      // Validate payment data
-      if (!newPayment.amount || isNaN(parseFloat(newPayment.amount)) || parseFloat(newPayment.amount) <= 0) {
-        throw new Error('Please enter a valid payment amount');
-      }
-
-      const paymentDate = newPayment.payment_date || new Date().toISOString().split('T')[0];
-      const nextPaymentDate = new Date(paymentDate);
-      nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
-      
-      const paymentData = {
-        ...newPayment,
-        member_id: paymentMember.id,
-        amount: parseFloat(newPayment.amount),
-        status: 'completed',
-        payment_date: paymentDate,
-        period_start: paymentDate, // Set period_start same as payment_date
-        next_payment: nextPaymentDate.toISOString().split('T')[0] // Set next_payment to 1 month after payment_date
-      };
-      
-      if (isNaN(paymentData.amount) || paymentData.amount <= 0) {
-        throw new Error('Please enter a valid payment amount');
-      }
-      
-      // First, check if we need to create a payment record in the database
-      // We'll use the member's update endpoint to record the payment
-      console.log('Submitting payment with data:', {
-        ...paymentMember,
-        last_payment_date: paymentDate,
-        next_payment_date: nextPaymentDate.toISOString().split('T')[0],
-        payment_history: [
-          ...(paymentMember.payment_history || []),
-          {
-            amount: paymentData.amount,
-            payment_date: paymentDate,
-            reference_number: paymentData.reference_number,
-            notes: paymentData.notes,
-            status: 'completed'
-          }
-        ]
-      });
-      
-      const paymentPayload = {
-        member_id: paymentMember.id,
-        amount: paymentData.amount,
-        payment_date: paymentDate,
-        reference_number: paymentData.reference_number,
-        notes: paymentData.notes
-      };
-      
-      console.log('Sending payment to server:', paymentPayload);
-      
-      try {
-        // First, create the payment record
-        const paymentResponse = await axios.post('http://localhost:5000/api/payments', paymentPayload, {
-          headers: { 
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('Payment created:', paymentResponse.data);
-        
-        // Then update the member's last payment dates
-        const updateData = {
-          last_payment_date: paymentDate,
-          next_payment_date: nextPaymentDate.toISOString().split('T')[0]
-        };
-        
-        const response = await axios.put(`http://localhost:5000/api/members/${paymentMember.id}`, updateData, {
-          headers: { 
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('Response status:', response.status);
-        console.log('Updated member data:', response.data);
-        
-        // Update local state with the server's response
-        if (response.data) {
-          // Map the server's camelCase properties to our snake_case format
-          const updatedMember = {
-            ...response.data,
-            // Map camelCase to snake_case if needed
-            full_name: response.data.fullName || response.data.full_name,
-            application_number: response.data.applicationNumber || response.data.application_number,
-            last_payment_date: response.data.lastPaymentDate || response.data.last_payment_date,
-            next_payment_date: response.data.nextPaymentDate || response.data.next_payment_date,
-            payment_history: response.data.paymentHistory || response.data.payment_history || []
-          };
-          
-          console.log('Updated member with payment:', updatedMember);
-          
-          setPaymentMember(prev => ({
-            ...prev,
-            ...updatedMember,
-            last_payment_date: paymentDate,
-            next_payment_date: nextPaymentDate.toISOString().split('T')[0]
-          }));
-          
-          // Also update the main members list
-          setMembers(prevMembers => 
-            prevMembers.map(member => 
-              member.id === paymentMember.id ? updatedMember : member
-            )
-          );
-          
-          // Force refresh the payment history
-          if (paymentMember) {
-            const history = updatedMember.payment_history || [];
-            setPaymentHistory(history);
-                console.log('Updated payment history:', history);
-            
-            // Show success message with custom alert
-            showAlert(
-              'Payment Successful',
-              `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${paymentMember.full_name || 'the member'}.`,
-              'success'
-            );
-            
-            // Reset form but keep the amount for next payment
-            setNewPayment({
-              amount: paymentMember.contribution_amount || '',
-              payment_date: new Date().toISOString().split('T')[0],
-              reference_number: '',
-              notes: ''
-            });
-            
-            // Show success message with custom alert
-            showAlert(
-              'Payment Successful',
-              `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${paymentMember.full_name || 'the member'}.`,
-              'success'
-            );
-
-            // Reset form for the next payment, keeping the default amount
-            setNewPayment({
-              amount: paymentMember.contribution_amount || '',
-              payment_date: new Date().toISOString().split('T')[0],
-              reference_number: '',
-              notes: ''
-            });
-
-            // Refresh the payment history in real-time without closing the dialog
-            const fetchHistory = async () => {
-              try {
-                const historyResponse = await axios.get(`http://localhost:5000/api/payments/history/${paymentMember.id}`, {
-                  headers: { 'x-auth-token': token }
-                });
-                setPaymentHistory(historyResponse.data);
-              } catch (historyError) {
-                console.error('Failed to refresh payment history:', historyError);
-              }
-            };
-
-            fetchHistory();
-            
-            // Refresh the main members list in the background to update due dates
-            fetchMembers();
-            fetchPaymentPeriods();
-
-            return response.data;
-          }
-        }
-      } catch (error) {
-        console.error('Error in payment process:', error);
-        let errorMessage = 'Failed to record payment';
-        
-        if (error.response) {
-          console.error('Response data:', error.response.data);
-          console.error('Response status:', error.response.status);
-          
-          if (error.response.status === 400) {
-            showAlert(
-              'Invalid Payment Data',
-              'The payment data is invalid. Please check the form and try again.',
-              'error'
-            );
-          } else if (error.response.status === 401) {
-            showAlert(
-              'Session Expired',
-              'Your session has expired. Please log in again.',
-              'warning'
-            );
-          } else if (error.response.status === 404) {
-            showAlert(
-              'Member Not Found',
-              'The member could not be found. Please refresh the page and try again.',
-              'error'
-            );
-          } else if (error.response.data && error.response.data.message) {
-            showAlert(
-              'Payment Error',
-              error.response.data.message,
-              'error'
-            );
-          } else {
-            showAlert(
-              'Payment Error',
-              `An error occurred while processing your payment (Status: ${error.response.status})`,
-              'error'
-            );
-          }
-        } else if (error.request) {
-          console.error('No response received:', error.request);
-          showAlert(
-            'Connection Error',
-            'Unable to connect to the server. Please check your internet connection and try again.',
-            'error'
-          );
-        } else {
-          console.error('Error setting up request:', error.message);
-          showAlert(
-            'Error',
-            error.message || 'An unexpected error occurred',
-            'error'
-          );
-        }
-        
-        throw error;
-      }
-    } catch (error) {
-      console.error('Error in payment submission:', error);
-      showAlert(
-        'Error',
-        'An unexpected error occurred while processing your payment. Please try again.',
-        'error'
-      );
-      throw error;
-    }
-  };
-
   const uniqueEndorsedBy = [...new Set(members.map(member => member.endorsed_by))].filter(Boolean);
   const uniquePrograms = [...new Set(members.map(member => member.program))].filter(Boolean);
   const uniqueBranches = [...new Set(members.map(member => member.branch))].filter(Boolean);
   const ageBrackets = getAgeBrackets().map(bracket => bracket.range);
 
-  // Add this near the top of your JSX return statement
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <CustomAlert
-        open={alert.open}
-        onClose={handleAlertClose}
-        title={alert.title}
-        message={alert.message}
-        severity={alert.severity}
-      />
-      <Navbar activePage="members" />
-      <div className="py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Members Management</h1>
-            <p className="mt-1 text-sm text-gray-500">Add and manage members</p>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-8">
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Members List</h2>
-                  <button
-                    onClick={handleOpen}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    + Add Member
-                  </button>
-                </div>
+
+return (
+  <div className="min-h-screen bg-gray-50">
+    <CustomAlert
+      open={alert.open}
+      onClose={handleAlertClose}
+      title={alert.title}
+      message={alert.message}
+      severity={alert.severity}
+    />
+    <Navbar activePage="members" />
+    <div className="py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Members Management</h1>
+          <p className="mt-1 text-sm text-gray-500">Add and manage members</p>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-8">
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-medium text-gray-900">Members List</h2>
+                <button
+                  onClick={handleOpen}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                  + Add Member
+                </button>
               </div>
-              <div className="p-6">
-                <div className="mb-4 space-y-4">
-                  {/* Search Bar */}
-                  <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                      </svg>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 space-y-4">
+                {/* Search Bar */}
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    className="focus:ring-green-500 focus:border-green-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 rounded-md p-2 border"
+                    placeholder="Search by name, program, or branch"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {(searchTerm || Object.values(filters).some(Boolean)) && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Clear search"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      {Object.values(filters).some(Boolean) && (
+                        <button
+                          onClick={clearFilters}
+                          className="text-gray-400 hover:text-gray-600 text-xs"
+                          title="Clear all filters"
+                        >
+                          Clear Filters
+                        </button>
+                      )}
                     </div>
-                    <input
-                      type="text"
-                      className="focus:ring-green-500 focus:border-green-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 rounded-md p-2 border"
-                      placeholder="Search by name, program, or branch"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    {(searchTerm || Object.values(filters).some(Boolean)) && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
-                        {searchTerm && (
-                          <button
-                            onClick={() => setSearchTerm('')}
-                            className="text-gray-400 hover:text-gray-600"
-                            title="Clear search"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
-                        {Object.values(filters).some(Boolean) && (
-                          <button
-                            onClick={clearFilters}
-                            className="text-gray-400 hover:text-gray-600 text-xs"
-                            title="Clear all filters"
-                          >
-                            Clear Filters
-                          </button>
-                        )}
-                      </div>
-                    )}
+                  )}
+                </div>
+                
+                {/* Filter Dropdowns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Age Bracket Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Age Bracket</label>
+                    <select
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
+                      value={filters.ageBracket}
+                      onChange={(e) => handleFilterChange('ageBracket', e.target.value)}
+                    >
+                      <option value="">All Age Brackets</option>
+                      {ageBrackets.map((bracket) => (
+                        <option key={bracket} value={bracket}>
+                          {bracket} years
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   
-                  {/* Filter Dropdowns */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Age Bracket Filter */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Age Bracket</label>
-                      <select
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
-                        value={filters.ageBracket}
-                        onChange={(e) => handleFilterChange('ageBracket', e.target.value)}
-                      >
-                        <option value="">All Age Brackets</option>
-                        {ageBrackets.map((bracket) => (
-                          <option key={bracket} value={bracket}>
-                            {bracket} years
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {/* Program Filter */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Program</label>
-                      <select
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
-                        value={filters.program}
-                        onChange={(e) => handleFilterChange('program', e.target.value)}
-                      >
-                        <option value="">All Programs</option>
-                        {uniquePrograms.map((program) => (
-                          <option key={program} value={program}>
-                            {program}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {/* Branch Filter */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Branch</label>
-                      <select
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
-                        value={filters.branch}
-                        onChange={(e) => handleFilterChange('branch', e.target.value)}
-                      >
-                        <option value="">All Branches</option>
-                        {uniqueBranches.map((branch) => (
-                          <option key={branch} value={branch}>
-                            {branch}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {/* Endorsed By Filter */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Endorsed By</label>
-                      <select
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
-                        value={filters.endorsedBy}
-                        onChange={(e) => handleFilterChange('endorsedBy', e.target.value)}
-                      >
-                        <option value="">All Field Workers</option>
-                        {fieldWorkers.map((worker) => (
-                          <option key={worker.id} value={worker.name}>
-                            {worker.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* Program Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Program</label>
+                    <select
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
+                      value={filters.program}
+                      onChange={(e) => handleFilterChange('program', e.target.value)}
+                    >
+                      <option value="">All Programs</option>
+                      {uniquePrograms.map((program) => (
+                        <option key={program} value={program}>
+                          {program}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Branch Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Branch</label>
+                    <select
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
+                      value={filters.branch}
+                      onChange={(e) => handleFilterChange('branch', e.target.value)}
+                    >
+                      <option value="">All Branches</option>
+                      {uniqueBranches.map((branch) => (
+                        <option key={branch} value={branch}>
+                          {branch}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Endorsed By Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Endorsed By</label>
+                    <select
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
+                      value={filters.endorsedBy}
+                      onChange={(e) => handleFilterChange('endorsedBy', e.target.value)}
+                    >
+                      <option value="">All Field Workers</option>
+                      {fieldWorkers.map((worker) => (
+                        <option key={worker.id} value={worker.name}>
+                          {worker.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-                <div className="relative overflow-x-auto w-full">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <colgroup>
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                        <col className="w-1/6" />
-                      </colgroup>
-                      <thead className="bg-gray-50">
+              </div>
+              <div className="relative overflow-x-auto w-full">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <colgroup>
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-1/6" />
+                    </colgroup>
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Contact
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date Applied
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Program
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Endorsed By
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Branch
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Period Start
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Next Due Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {loading ? (
                         <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Contact
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date Applied
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Program
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Endorsed By
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Branch
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Period Start
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Next Due Date
-                          </th>
+                          <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                            Loading members...
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {loading ? (
-                          <tr>
-                            <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
-                              Loading members...
+                      ) : filteredMembers.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                            {searchTerm || Object.values(filters).some(Boolean) 
+                              ? 'No members match your search criteria. Try different filters.' 
+                              : 'No members found. Click "Add Member" to create one.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredMembers.map((member) => (
+                          <tr 
+                            key={member.id} 
+                            className="group hover:bg-gray-50 w-full cursor-pointer transition-colors"
+                            onClick={() => handleMemberClick(member)}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 group-hover:bg-gray-50">
+                              {member.full_name || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {member.contact_number || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {member.date_applied ? new Date(member.date_applied).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                member.program?.toLowerCase() === 'jacinth' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : member.program?.toLowerCase() === 'chalcedony'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {member.program || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {member.field_worker ? member.field_worker.name : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {member.branch || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {periodData[member.id]?.period_start ? new Date(periodData[member.id].period_start).toLocaleDateString() : '--'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {periodData[member.id]?.next_payment ? new Date(periodData[member.id].next_payment).toLocaleDateString() : '--'}
                             </td>
                           </tr>
-                        ) : filteredMembers.length === 0 ? (
-                          <tr>
-                            <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
-                              {searchTerm || Object.values(filters).some(Boolean) 
-                                ? 'No members match your search criteria. Try different filters.' 
-                                : 'No members found. Click "Add Member" to create one.'}
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredMembers.map((member) => (
-                            <tr 
-                              key={member.id} 
-                              className="group hover:bg-gray-50 w-full cursor-pointer transition-colors"
-                              onClick={() => handleMemberClick(member)}
-                            >
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 group-hover:bg-gray-50">
-                                {member.full_name || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.contact_number || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.date_applied ? new Date(member.date_applied).toLocaleDateString() : 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  member.program?.toLowerCase() === 'jacinth' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : member.program?.toLowerCase() === 'chalcedony'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {member.program || 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.field_worker ? member.field_worker.name : 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {member.branch || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {periodData[member.id]?.period_start 
-                                  ? new Date(periodData[member.id].period_start).toLocaleDateString() 
-                                  : '--'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {periodData[member.id]?.next_payment 
-                                  ? new Date(periodData[member.id].next_payment).toLocaleDateString() 
-                                  : '--'}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -1871,195 +1542,7 @@ const MembersPage = () => {
         </div>
       </Dialog>
 
-      {/* Payment Dialog */}
-      <Dialog
-        open={paymentOpen}
-        onClose={handlePaymentClose}
-        maxWidth="md"
-        fullWidth
-        className="relative z-50"
-        aria-labelledby="payment-dialog-title"
-      >
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" />
-        <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:p-6">
-              <div className="sm:flex sm:items-start">
-                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                  <h3 className="text-xl font-semibold leading-6 text-gray-900 mb-4" id="payment-dialog-title">
-                    Record Payment
-                  </h3>
-                  {paymentLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-b-green-500"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Member Info */}
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">Member Information</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="font-medium text-gray-500">Name:</span> {paymentMember?.full_name || 'N/A'}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-500">Program:</span> {paymentMember?.program || 'N/A'}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-500">Age Bracket:</span> {paymentMember?.age_bracket || 'N/A'}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-500">Contribution:</span> 
-                            {paymentMember?.contribution_amount ? `₱${Number(paymentMember.contribution_amount).toLocaleString()}` : 'N/A'}
-                          </div>
-                          <div className="sm:col-span-2">
-                            <span className="font-medium text-gray-500">Availment Period:</span> {paymentMember?.availment_period || 'N/A'}
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Payment Form */}
-                      <form onSubmit={handlePaymentSubmit}>
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-gray-700">Payment Details</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Amount
-                              </label>
-                              <div className="relative rounded-md shadow-sm">
-                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                  <span className="text-gray-500 sm:text-sm">₱</span>
-                                </div>
-                                <input
-                                  type="number"
-                                  name="amount"
-                                  value={newPayment.amount}
-                                  onChange={handlePaymentChange}
-                                  className="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
-                                  placeholder="0.00"
-                                  step="0.01"
-                                  min="0"
-                                  required
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Payment Date
-                              </label>
-                              <input
-                                type="date"
-                                name="payment_date"
-                                value={newPayment.payment_date}
-                                onChange={handlePaymentChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Reference Number (Optional)
-                              </label>
-                              <input
-                                type="text"
-                                name="reference_number"
-                                value={newPayment.reference_number}
-                                onChange={handlePaymentChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
-                                placeholder="OR #, Receipt #, etc."
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Notes (Optional)
-                              </label>
-                              <input
-                                type="text"
-                                name="notes"
-                                value={newPayment.notes}
-                                onChange={handlePaymentChange}
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
-                                placeholder="Additional notes"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Payment History */}
-                        <div className="mt-6">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-gray-700">Payment History</h4>
-                            <span className="text-xs text-gray-500">
-                              {paymentHistory.length} {paymentHistory.length === 1 ? 'record' : 'records'} found
-                            </span>
-                          </div>
-                          
-                          {paymentHistory.length > 0 ? (
-                            <div className="overflow-hidden border border-gray-200 rounded-lg">
-                              <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Date
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Amount
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Reference
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                  {paymentHistory.map((payment) => (
-                                    <tr key={payment.id}>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {new Date(payment.payment_date).toLocaleDateString()}
-                                      </td>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        ₱{Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                      </td>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {payment.reference_number || '—'}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 text-sm text-gray-500 bg-gray-50 rounded-lg">
-                              No payment history found for this member.
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Form Actions */}
-                        <div className="mt-6 flex justify-end space-x-3">
-                          <button
-                            type="button"
-                            onClick={handlePaymentClose}
-                            className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            className="inline-flex justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline-offset-2 focus-visible:outline-green-600"
-                          >
-                            Record Payment
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Dialog>
 
       {/* View Member Dialog */}
       <Dialog 
@@ -2085,13 +1568,6 @@ const MembersPage = () => {
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-
-                    <button
-                      onClick={() => handlePaymentOpen(viewMember)}
-                      className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 print:hidden"
-                    >
-                      Payment
-                    </button>
                     <button
                       onClick={window.print}
                       className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 print:hidden"
@@ -2249,7 +1725,9 @@ const MembersPage = () => {
         </div>
       )}
     </div>
-  );
+  )
+  </div>
+  )
 };
 
 export default MembersPage;
