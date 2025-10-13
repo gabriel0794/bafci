@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import sequelize from './config/db.js';
@@ -40,7 +42,12 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
-app.use(express.json({ extended: false }));
+app.use(express.json());
+
+// Serve static files from the 'uploads' directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => res.send('API Running'));
 

@@ -1,6 +1,24 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs-extra';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
+
+// Multer configuration for file uploads
+const uploadDir = 'uploads/';
+fs.ensureDirSync(uploadDir); // Ensure the upload directory exists
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({ storage });
 
 const { Member, FieldWorker } = models;
 const router = express.Router();
@@ -20,13 +38,18 @@ const toCamelCase = (obj) => {
 };
 
 // Create a new member
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, upload.single('picture'), async (req, res) => {
   try {
     // Get the current user ID from the auth middleware
     const userId = req.user.id;
     
     // Create member with the data from the request body
     const memberData = toCamelCase(req.body);
+
+    // If a picture is uploaded, add its filename to the data
+    if (req.file) {
+      memberData.picture = req.file.filename;
+    }
 
     const member = await Member.create({
       ...memberData,
@@ -121,7 +144,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Update a member
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, upload.single('picture'), async (req, res) => {
   try {
     const member = await Member.findByPk(req.params.id);
 
@@ -136,6 +159,11 @@ router.put('/:id', auth, async (req, res) => {
       if (incomingData[key] !== null && incomingData[key] !== '') {
         memberData[key] = incomingData[key];
       }
+    }
+
+    // If a new picture is uploaded, add its filename to the data
+    if (req.file) {
+      memberData.picture = req.file.filename;
     }
 
     await member.update(memberData);

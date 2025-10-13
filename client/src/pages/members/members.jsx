@@ -41,6 +41,9 @@ const MembersPage = () => {
     notes: ''
   });
 
+  // Fullscreen image viewer state
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+
   // Alert state
   const [alert, setAlert] = useState({
     open: false,
@@ -95,7 +98,8 @@ const MembersPage = () => {
         setPreviewUrl(reader.result);
       };
       reader.readAsDataURL(file);
-      handleChange(e);
+      // Store the actual file object in state, not just the path
+      setCurrentMember(prev => ({ ...prev, picture: file }));
     }
   };
 
@@ -374,20 +378,19 @@ const MembersPage = () => {
         console.error('Error fetching members:', error);
         // Show error to user
         if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.error('Response data:', error.response.data);
-          console.error('Response status:', error.response.status);
-          console.error('Response headers:', error.response.headers);
-          alert(`Error ${error.response.status}: ${error.response.data.message || 'Failed to fetch members'}`);
+          showAlert(
+            'Fetch Error',
+            `Error ${error.response.status}: ${error.response.data.message || 'Failed to fetch members'}`,
+            'error'
+          );
         } else if (error.request) {
-          // The request was made but no response was received
-          console.error('No response received:', error.request);
-          alert('No response from server. Please check your connection and try again.');
+          showAlert(
+            'Connection Error',
+            'No response from server. Please check your connection and try again.',
+            'error'
+          );
         } else {
-          // Something happened in setting up the request that triggered an Error
-          console.error('Error setting up request:', error.message);
-          alert(`Error: ${error.message}`);
+          showAlert('Request Error', `Error: ${error.message}`, 'error');
         }
       } finally {
         setLoading(false);
@@ -452,7 +455,7 @@ const MembersPage = () => {
     e.preventDefault();
     // Validate required fields before showing confirmation
     if (!currentMember.full_name || !currentMember.program || !currentMember.age_bracket) {
-      alert('Please fill in all required fields before submitting.');
+      showAlert('Missing Information', 'Please fill in all required fields before submitting.', 'warning');
       return;
     }
     setShowConfirmDialog(true);
@@ -460,33 +463,35 @@ const MembersPage = () => {
 
   const handleConfirmSubmit = async () => {
     setShowConfirmDialog(false);
-    
+
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
-      // Format dates to YYYY-MM-DD format for the API
-      const formattedMember = {
-        ...currentMember,
-        date_applied: currentMember.date_applied || new Date().toISOString().split('T')[0],
-        date_of_birth: currentMember.date_of_birth || null,
-        spouse_dob: currentMember.spouse_dob || null,
-        beneficiary_dob: currentMember.beneficiary_dob || null,
-        date_paid: currentMember.date_paid || null,
-        age: currentMember.age ? parseInt(currentMember.age) : null,
-        beneficiary_age: currentMember.beneficiary_age ? parseInt(currentMember.beneficiary_age) : null,
-        contribution_amount: currentMember.contribution_amount ? parseFloat(currentMember.contribution_amount) : null
-      };
-      
-      const response = await fetch('http://localhost:5000/api/members', {
-        method: editing ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
-        },
-        body: JSON.stringify(editing ? { ...formattedMember, id: currentMember.id } : formattedMember)
+
+      const formData = new FormData();
+
+      // Append all form fields to formData
+      Object.keys(currentMember).forEach(key => {
+        // Ensure we don't append null or undefined values, except for the picture
+        if (key === 'picture' && currentMember[key] instanceof File) {
+          formData.append('picture', currentMember[key]);
+        } else if (currentMember[key] !== null && currentMember[key] !== undefined) {
+          formData.append(key, currentMember[key]);
+        }
       });
-      
+
+      const url = editing ? `http://localhost:5000/api/members/${currentMember.id}` : 'http://localhost:5000/api/members';
+      const method = editing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'x-auth-token': token
+          // Do NOT set 'Content-Type': the browser will set it to 'multipart/form-data' automatically
+        },
+        body: formData
+      });
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to save member');
@@ -509,20 +514,29 @@ const MembersPage = () => {
       }
       
       // Show success message
-      alert(`Member ${editing ? 'updated' : 'added'} successfully!`);
+      showAlert(
+        'Success',
+        `Member ${editing ? 'updated' : 'added'} successfully!`,
+        'success'
+      );
       handleClose();
       
     } catch (error) {
       console.error('Error saving member:', error);
-      alert(error.message || 'Failed to save member. Please try again.');
+      showAlert('Save Error', error.message || 'Failed to save member. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleEdit = (member) => {
-    // Merge the fetched member data with the initial state to ensure all fields are defined
     setCurrentMember({ ...initialMemberState, ...member });
+    if (member.picture) {
+      // Construct the full URL for the existing picture
+      setPreviewUrl(`http://localhost:5000/uploads/${member.picture}`);
+    } else {
+      setPreviewUrl('');
+    }
     setEditing(true);
     setOpen(true);
   };
@@ -572,15 +586,19 @@ const MembersPage = () => {
       console.error('Error fetching payment history:', error);
       
       if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-        alert(`Error ${error.response.status}: ${error.response.data.message || 'Failed to fetch payment history'}`);
+        showAlert(
+          'Fetch Error',
+          `Error ${error.response.status}: ${error.response.data.message || 'Failed to fetch payment history'}`,
+          'error'
+        );
       } else if (error.request) {
-        console.error('No response received:', error.request);
-        alert('No response from server. Please check your connection and try again.');
+        showAlert(
+          'Connection Error',
+          'No response from server. Please check your connection and try again.',
+          'error'
+        );
       } else {
-        console.error('Error setting up request:', error.message);
-        alert(`Error: ${error.message}`);
+        showAlert('Request Error', `Error: ${error.message}`, 'error');
       }
       
       // Close the dialog on error
@@ -2053,13 +2071,7 @@ const MembersPage = () => {
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    {viewMember?.picture && (
-                      <img
-                        className="h-16 w-16 object-cover rounded-full border-2 border-gray-300"
-                        src={viewMember.picture}
-                        alt="Member"
-                      />
-                    )}
+
                     <button
                       onClick={() => handlePaymentOpen(viewMember)}
                       className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 print:hidden"
@@ -2083,9 +2095,10 @@ const MembersPage = () => {
                         <div className="flex-shrink-0">
                           {viewMember.picture ? (
                             <img
-                              className="h-32 w-32 rounded-full border-2 border-gray-300 object-cover"
-                              src={viewMember.picture}
+                              className="h-32 w-32 rounded-full border-2 border-gray-300 object-cover cursor-pointer transition-transform hover:scale-105"
+                              src={`http://localhost:5000/uploads/${viewMember.picture}`}
                               alt={viewMember.full_name || 'Member'}
+                              onClick={() => setFullscreenImage(`http://localhost:5000/uploads/${viewMember.picture}`)}
                             />
                           ) : (
                             <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -2201,6 +2214,26 @@ const MembersPage = () => {
           </div>
         </div>
       </Dialog>
+
+      {/* Fullscreen Image Viewer */}
+      {fullscreenImage && (
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <img
+            src={fullscreenImage}
+            alt="Fullscreen Member Photo"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          />
+          <button
+            className="absolute top-4 right-6 text-white text-4xl font-bold hover:text-gray-300 transition-colors"
+            onClick={() => setFullscreenImage(null)}
+          >
+            &times;
+          </button>
+        </div>
+      )}
     </div>
   );
 };
