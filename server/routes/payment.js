@@ -43,7 +43,7 @@ router.get('/history/:memberId', auth, async (req, res) => {
 });
 
 // Create a new payment for a member
-router.post('/payments', auth, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const { memberId, member_id, amount, payment_date, reference_number, referenceNumber, notes } = req.body;
     

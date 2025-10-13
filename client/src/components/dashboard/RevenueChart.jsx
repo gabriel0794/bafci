@@ -53,16 +53,12 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     // Process and group data by date
     const groupedData = {};
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
     
-    // Initialize with today and tomorrow
+    // Initialize with today only
     const todayStr = today.toLocaleDateString();
-    const tomorrowStr = tomorrow.toLocaleDateString();
     
-    // Ensure we have entries for today and tomorrow
+    // Ensure we have an entry for today
     groupedData[todayStr] = 0;
-    groupedData[tomorrowStr] = 0;
     
     // Add actual data
     revenues.forEach(item => {
@@ -213,7 +209,6 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
             tomorrow.setDate(tomorrow.getDate() + 1);
             
             if (date.toDateString() === today.toDateString()) return 'Today';
-            if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
             
             return date.toLocaleDateString('en-US', { 
               month: 'short', 

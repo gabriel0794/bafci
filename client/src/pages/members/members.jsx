@@ -5,6 +5,7 @@ import {
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent,
   DialogActions, MenuItem, Grid, FormControl, InputLabel, Select
 } from '@mui/material';
+import CustomAlert from '../../components/common/CustomAlert';
 import Navbar from '../../components/Navbar';
 
 const MembersPage = () => {
@@ -32,11 +33,20 @@ const MembersPage = () => {
   const [paymentMember, setPaymentMember] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [newPayment, setNewPayment] = useState({
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
     reference_number: '',
     notes: ''
+  });
+
+  // Alert state
+  const [alert, setAlert] = useState({
+    open: false,
+    title: '',
+    message: '',
+    severity: 'info' // 'success', 'error', 'warning', 'info'
   });
 
   const initialMemberState = {
@@ -392,6 +402,8 @@ const MembersPage = () => {
     setOpen(false);
     setEditing(false);
     setPreviewUrl('');
+    setShowConfirmDialog(false);
+    setShowConfirmDialog(false);
     setCurrentMember({
       application_number: '',
       full_name: '',
@@ -436,8 +448,18 @@ const MembersPage = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    // Validate required fields before showing confirmation
+    if (!currentMember.full_name || !currentMember.program || !currentMember.age_bracket) {
+      alert('Please fill in all required fields before submitting.');
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmDialog(false);
     
     try {
       setLoading(true);
@@ -457,12 +479,12 @@ const MembersPage = () => {
       };
       
       const response = await fetch('http://localhost:5000/api/members', {
-        method: 'POST',
+        method: editing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-auth-token': token
         },
-        body: JSON.stringify(formattedMember)
+        body: JSON.stringify(editing ? { ...formattedMember, id: currentMember.id } : formattedMember)
       });
       
       if (!response.ok) {
@@ -472,13 +494,18 @@ const MembersPage = () => {
       
       const savedMember = await response.json();
       
-      // Update the UI with the saved member (including the server-generated fields)
-      if (editing) {
-        setMembers(members.map(m => 
-          m.id === savedMember.id ? savedMember : m
-        ));
-      } else {
-        setMembers([savedMember, ...members]);
+      // Fetch the updated members list to ensure we have all data
+      const membersResponse = await fetch('http://localhost:5000/api/members', {
+        headers: {
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (membersResponse.ok) {
+        const updatedMembers = await membersResponse.json();
+        setMembers(updatedMembers);
+        setFilteredMembers(updatedMembers);
       }
       
       // Show success message
@@ -583,6 +610,21 @@ const MembersPage = () => {
     }));
   };
 
+  // Helper function to show alerts
+  const showAlert = (title, message, severity = 'info') => {
+    setAlert({
+      open: true,
+      title,
+      message,
+      severity
+    });
+  };
+
+  // Handle alert close
+  const handleAlertClose = () => {
+    setAlert(prev => ({ ...prev, open: false }));
+  };
+
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     if (!paymentMember) return;
@@ -591,6 +633,11 @@ const MembersPage = () => {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Validate payment data
+      if (!newPayment.amount || isNaN(parseFloat(newPayment.amount)) || parseFloat(newPayment.amount) <= 0) {
+        throw new Error('Please enter a valid payment amount');
       }
 
       const paymentDate = newPayment.payment_date || new Date().toISOString().split('T')[0];
@@ -611,63 +658,230 @@ const MembersPage = () => {
         throw new Error('Please enter a valid payment amount');
       }
       
-      await axios.post('http://localhost:5000/api/payments', paymentData, {
-        headers: { 
-          'x-auth-token': token,
-          'Content-Type': 'application/json'
+      // First, check if we need to create a payment record in the database
+      // We'll use the member's update endpoint to record the payment
+      console.log('Submitting payment with data:', {
+        ...paymentMember,
+        last_payment_date: paymentDate,
+        next_payment_date: nextPaymentDate.toISOString().split('T')[0],
+        payment_history: [
+          ...(paymentMember.payment_history || []),
+          {
+            amount: paymentData.amount,
+            payment_date: paymentDate,
+            reference_number: paymentData.reference_number,
+            notes: paymentData.notes,
+            status: 'completed'
+          }
+        ]
+      });
+      
+      const paymentPayload = {
+        member_id: paymentMember.id,
+        amount: paymentData.amount,
+        payment_date: paymentDate,
+        reference_number: paymentData.reference_number,
+        notes: paymentData.notes
+      };
+      
+      console.log('Sending payment to server:', paymentPayload);
+      
+      try {
+        // First, create the payment record
+        const paymentResponse = await axios.post('http://localhost:5000/api/payments', paymentPayload, {
+          headers: { 
+            'x-auth-token': token,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('Payment created:', paymentResponse.data);
+        
+        // Then update the member's last payment dates
+        const updateData = {
+          last_payment_date: paymentDate,
+          next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+        };
+        
+        const response = await axios.put(`http://localhost:5000/api/members/${paymentMember.id}`, updateData, {
+          headers: { 
+            'x-auth-token': token,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Updated member data:', response.data);
+        
+        // Update local state with the server's response
+        if (response.data) {
+          // Map the server's camelCase properties to our snake_case format
+          const updatedMember = {
+            ...response.data,
+            // Map camelCase to snake_case if needed
+            full_name: response.data.fullName || response.data.full_name,
+            application_number: response.data.applicationNumber || response.data.application_number,
+            last_payment_date: response.data.lastPaymentDate || response.data.last_payment_date,
+            next_payment_date: response.data.nextPaymentDate || response.data.next_payment_date,
+            payment_history: response.data.paymentHistory || response.data.payment_history || []
+          };
+          
+          console.log('Updated member with payment:', updatedMember);
+          
+          setPaymentMember(prev => ({
+            ...prev,
+            ...updatedMember,
+            last_payment_date: paymentDate,
+            next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+          }));
+          
+          // Also update the main members list
+          setMembers(prevMembers => 
+            prevMembers.map(member => 
+              member.id === paymentMember.id ? updatedMember : member
+            )
+          );
+          
+          // Force refresh the payment history
+          if (paymentMember) {
+            const history = updatedMember.payment_history || [];
+            setPaymentHistory(history);
+                console.log('Updated payment history:', history);
+            
+            // Show success message with custom alert
+            showAlert(
+              'Payment Successful',
+              `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${paymentMember.full_name || 'the member'}.`,
+              'success'
+            );
+            
+            // Reset form but keep the amount for next payment
+            setNewPayment({
+              amount: paymentMember.contribution_amount || '',
+              payment_date: new Date().toISOString().split('T')[0],
+              reference_number: '',
+              notes: ''
+            });
+            
+            // Show success message with custom alert
+            showAlert(
+              'Payment Successful',
+              `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${paymentMember.full_name || 'the member'}.`,
+              'success'
+            );
+
+            // Reset form for the next payment, keeping the default amount
+            setNewPayment({
+              amount: paymentMember.contribution_amount || '',
+              payment_date: new Date().toISOString().split('T')[0],
+              reference_number: '',
+              notes: ''
+            });
+
+            // Refresh the payment history in real-time without closing the dialog
+            const fetchHistory = async () => {
+              try {
+                const historyResponse = await axios.get(`http://localhost:5000/api/payments/history/${paymentMember.id}`, {
+                  headers: { 'x-auth-token': token }
+                });
+                setPaymentHistory(historyResponse.data);
+              } catch (historyError) {
+                console.error('Failed to refresh payment history:', historyError);
+              }
+            };
+
+            fetchHistory();
+            
+            // Refresh the main members list in the background to update due dates
+            fetchMembers();
+            fetchPaymentPeriods();
+
+            return response.data;
+          }
         }
-      });
-      
-      // Show success message
-      alert('Payment recorded successfully!');
-      
-      // Refresh payment history
-      await handlePaymentOpen(paymentMember);
-      
-      // Reset form but keep the amount for next payment
-      setNewPayment({
-        amount: paymentMember.contribution_amount || '',
-        payment_date: new Date().toISOString().split('T')[0],
-        reference_number: '',
-        notes: ''
-      });
-      
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-        alert(`Error ${error.response.status}: ${error.response.data.message || 'Failed to record payment'}`);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-        alert('No response from server. Please check your connection and try again.');
-      } else {
-        console.error('Error setting up request:', error.message);
-        alert(`Error: ${error.message}`);
+      } catch (error) {
+        console.error('Error in payment process:', error);
+        let errorMessage = 'Failed to record payment';
+        
+        if (error.response) {
+          console.error('Response data:', error.response.data);
+          console.error('Response status:', error.response.status);
+          
+          if (error.response.status === 400) {
+            showAlert(
+              'Invalid Payment Data',
+              'The payment data is invalid. Please check the form and try again.',
+              'error'
+            );
+          } else if (error.response.status === 401) {
+            showAlert(
+              'Session Expired',
+              'Your session has expired. Please log in again.',
+              'warning'
+            );
+          } else if (error.response.status === 404) {
+            showAlert(
+              'Member Not Found',
+              'The member could not be found. Please refresh the page and try again.',
+              'error'
+            );
+          } else if (error.response.data && error.response.data.message) {
+            showAlert(
+              'Payment Error',
+              error.response.data.message,
+              'error'
+            );
+          } else {
+            showAlert(
+              'Payment Error',
+              `An error occurred while processing your payment (Status: ${error.response.status})`,
+              'error'
+            );
+          }
+        } else if (error.request) {
+          console.error('No response received:', error.request);
+          showAlert(
+            'Connection Error',
+            'Unable to connect to the server. Please check your internet connection and try again.',
+            'error'
+          );
+        } else {
+          console.error('Error setting up request:', error.message);
+          showAlert(
+            'Error',
+            error.message || 'An unexpected error occurred',
+            'error'
+          );
+        }
+        
+        throw error;
       }
+    } catch (error) {
+      console.error('Error in payment submission:', error);
+      showAlert(
+        'Error',
+        'An unexpected error occurred while processing your payment. Please try again.',
+        'error'
+      );
+      throw error;
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar activePage="members" />
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
-        </div>
-      </div>
-    );
-  }
-
-  // Unique values for filters
+  const uniqueEndorsedBy = [...new Set(members.map(member => member.endorsed_by))].filter(Boolean);
   const uniquePrograms = [...new Set(members.map(member => member.program))].filter(Boolean);
   const uniqueBranches = [...new Set(members.map(member => member.branch))].filter(Boolean);
-  const uniqueEndorsedBy = [...new Set(members.map(member => member.endorsed_by))].filter(Boolean);
   const ageBrackets = getAgeBrackets().map(bracket => bracket.range);
 
+  // Add this near the top of your JSX return statement
   return (
     <div className="min-h-screen bg-gray-50">
+      <CustomAlert
+        open={alert.open}
+        onClose={handleAlertClose}
+        title={alert.title}
+        message={alert.message}
+        severity={alert.severity}
+      />
       <Navbar activePage="members" />
       <div className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -933,7 +1147,15 @@ const MembersPage = () => {
                     {editing ? 'Edit Member' : 'Add New Member'}
                   </h3>
                   <div className="mt-2">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      // Validate required fields before showing confirmation
+                      if (!currentMember.full_name || !currentMember.program || !currentMember.age_bracket) {
+                        alert('Please fill in all required fields before submitting.');
+                        return;
+                      }
+                      setShowConfirmDialog(true);
+                    }}>
                       <div className="space-y-6">
                         <div className="border-b border-gray-200 pb-4 mb-4">
                           <div className="flex items-center space-x-6">
@@ -1573,6 +1795,50 @@ const MembersPage = () => {
         </div>
       </Dialog>
 
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div className="sm:flex sm:items-start">
+            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+              <h3 className="text-base font-semibold leading-6 text-gray-900" id="modal-title">
+                Confirm Submission
+              </h3>
+              <div className="mt-2">
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to {editing ? 'update' : 'add'} this member? This action cannot be undone. Please review all the data entered.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+          <button
+            type="button"
+            className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto"
+            onClick={handleConfirmSubmit}
+          >
+            {editing ? 'Update Member' : 'Add Member'}
+          </button>
+          <button
+            type="button"
+            className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+            onClick={() => setShowConfirmDialog(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </Dialog>
+
       {/* Payment Dialog */}
       <Dialog
         open={paymentOpen}
@@ -1591,10 +1857,9 @@ const MembersPage = () => {
                   <h3 className="text-xl font-semibold leading-6 text-gray-900 mb-4" id="payment-dialog-title">
                     Record Payment
                   </h3>
-                  
                   {paymentLoading ? (
                     <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-b-green-500"></div>
                     </div>
                   ) : (
                     <div className="space-y-6">

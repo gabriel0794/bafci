@@ -3,11 +3,41 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/api';
 import Navbar from '../../components/Navbar';
 
+// Confirmation Dialog Component
+const ConfirmationDialog = ({ isOpen, onClose, onConfirm, title, message, confirmText, cancelText = 'Cancel' }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
+        <p className="text-sm text-gray-500 mb-6">{message}</p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RevenuePage = () => {
   const [revenues, setRevenues] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showRevenueConfirm, setShowRevenueConfirm] = useState(false);
+  const [showExpenseConfirm, setShowExpenseConfirm] = useState(false);
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
@@ -113,6 +143,18 @@ const RevenuePage = () => {
       setError('Please enter a valid positive amount.');
       return;
     }
+
+    if (type === 'revenue') {
+      setShowRevenueConfirm(true);
+    } else if (type === 'expense') {
+      setShowExpenseConfirm(true);
+    }
+  };
+
+  const confirmTransaction = async (type) => {
+    // Close the appropriate dialog
+    setShowRevenueConfirm(false);
+    setShowExpenseConfirm(false);
 
     try {
       const token = authService.getAuthToken();
@@ -328,6 +370,25 @@ const RevenuePage = () => {
                   Add Expense
                 </button>
               </div>
+
+              {/* Confirmation Dialogs */}
+              <ConfirmationDialog
+                isOpen={showRevenueConfirm}
+                onClose={() => setShowRevenueConfirm(false)}
+                onConfirm={() => confirmTransaction('revenue')}
+                title="Confirm Add Revenue"
+                message={`Are you sure you want to add ₱${formData.amount || '0.00'} as revenue?`}
+                confirmText="Add Revenue"
+              />
+              <ConfirmationDialog
+                isOpen={showExpenseConfirm}
+                onClose={() => setShowExpenseConfirm(false)}
+                onConfirm={() => confirmTransaction('expense')}
+                title="Confirm Add Expense"
+                message={`Are you sure you want to add an expense of ₱${formData.amount || '0.00'}?`}
+                confirmText="Add Expense"
+                confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+              />
             </form>
           </div>
         </div>

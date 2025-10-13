@@ -142,21 +142,29 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with logout button */}
-      <div className="bg-green-900 text-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Account Manager</h1>
-            <p className="text-sm text-green-100">Welcome, {userRole.name}</p>
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <a href="/dashboard" className="text-2xl font-bold text-gray-900">BAFCI</a>
+              <div className="ml-8 flex items-center space-x-4">
+                <div className="text-sm text-gray-500">
+                  <p className="font-medium">Account Manager</p>
+                  <p className="text-xs">Welcome, {userRole.name}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-white text-green-900 px-4 py-2 rounded hover:bg-gray-100 transition"
-          >
-            Logout
-          </button>
         </div>
-      </div>
+      </nav>
 
       {/* Main Content */}
       <div className="flex items-center justify-center py-10 px-4">
