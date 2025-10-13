@@ -38,6 +38,9 @@ const RevenuePage = () => {
   const [error, setError] = useState(null);
   const [showRevenueConfirm, setShowRevenueConfirm] = useState(false);
   const [showExpenseConfirm, setShowExpenseConfirm] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [archiveStartDate, setArchiveStartDate] = useState('');
+  const [archiveEndDate, setArchiveEndDate] = useState('');
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
@@ -397,7 +400,43 @@ const RevenuePage = () => {
         <div className="lg:col-span-2 w-full">
           <div className="bg-white shadow rounded-lg overflow-hidden w-full">
             <div className="px-6 py-5 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Recent Revenue Entries</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {showArchive ? 'Archived Entries' : 'Recent Revenue Entries'}
+                </h3>
+                <button 
+                  onClick={() => setShowArchive(!showArchive)}
+                  className="text-sm font-medium text-green-600 hover:text-green-800 focus:outline-none"
+                >
+                  {showArchive ? 'Show Recent' : 'View Archives'}
+                </button>
+              </div>
+              {showArchive && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="archiveStartDate" className="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input
+                      type="date"
+                      id="archiveStartDate"
+                      name="archiveStartDate"
+                      value={archiveStartDate}
+                      onChange={(e) => setArchiveStartDate(e.target.value)}
+                      className="mt-1 block w-full px-2 py-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="archiveEndDate" className="block text-sm font-medium text-gray-700">End Date</label>
+                    <input
+                      type="date"
+                      id="archiveEndDate"
+                      name="archiveEndDate"
+                      value={archiveEndDate}
+                      onChange={(e) => setArchiveEndDate(e.target.value)}
+                      className="mt-1 block w-full px-2 py-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -424,81 +463,160 @@ const RevenuePage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {revenues.length > 0 ? (
-                    revenues.map((revenue) => (
-                      <tr key={revenue.id}>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(revenue.date)}
-                        </td>
-                        <td className="px-3 py-3 text-sm font-medium text-gray-900 max-w-xs truncate">
-                          {revenue.description}
-                        </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {revenue.branch?.name || 'N/A'}
-                        </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {revenue.category.charAt(0).toUpperCase() + revenue.category.slice(1)}
-                        </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {revenue.user?.name || 'System'}
-                        </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
-                          <span className={`${revenue.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(revenue.amount)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="px-3 py-4 text-center text-sm text-gray-500">
-                        No revenue entries found
-                      </td>
-                    </tr>
-                  )}
+                  {(() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    let displayedRevenues = [];
+
+                    if (showArchive) {
+                      displayedRevenues = revenues.filter(r => {
+                        const entryDate = new Date(r.date).toISOString().split('T')[0];
+                        const isArchived = entryDate !== today;
+                        const afterStart = !archiveStartDate || entryDate >= archiveStartDate;
+                        const beforeEnd = !archiveEndDate || entryDate <= archiveEndDate;
+                        return isArchived && afterStart && beforeEnd;
+                      });
+
+                      const groupedByDate = displayedRevenues.reduce((acc, revenue) => {
+                        const date = new Date(revenue.date).toISOString().split('T')[0];
+                        if (!acc[date]) {
+                          acc[date] = [];
+                        }
+                        acc[date].push(revenue);
+                        return acc;
+                      }, {});
+
+                      const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+
+                      if (sortedDates.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan="6" className="px-3 py-4 text-center text-sm text-gray-500">
+                              No archived entries found for the selected date range.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return sortedDates.flatMap(date => [
+                        <tr key={date} className="bg-gray-100">
+                          <td colSpan="6" className="px-3 py-2 text-left text-sm font-semibold text-gray-800">
+                            {formatDate(date)}
+                          </td>
+                        </tr>,
+                        ...groupedByDate[date].map(revenue => (
+                          <tr key={revenue.id}>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500"></td>
+                            <td className="px-3 py-3 text-sm font-medium text-gray-900 max-w-xs truncate">
+                              {revenue.description}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {revenue.branch?.name || 'N/A'}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {revenue.category.charAt(0).toUpperCase() + revenue.category.slice(1)}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {revenue.user?.name || 'System'}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                              <span className={`${revenue.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {formatCurrency(revenue.amount)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ]);
+
+                    } else {
+                      displayedRevenues = revenues.filter(r => new Date(r.date).toISOString().split('T')[0] === today);
+                      if (displayedRevenues.length > 0) {
+                        return displayedRevenues.map((revenue) => (
+                          <tr key={revenue.id}>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {formatDate(revenue.date)}
+                            </td>
+                            <td className="px-3 py-3 text-sm font-medium text-gray-900 max-w-xs truncate">
+                              {revenue.description}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {revenue.branch?.name || 'N/A'}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {revenue.category.charAt(0).toUpperCase() + revenue.category.slice(1)}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {revenue.user?.name || 'System'}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                              <span className={`${revenue.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {formatCurrency(revenue.amount)}
+                              </span>
+                            </td>
+                          </tr>
+                        ));
+                      } else {
+                        return (
+                          <tr>
+                            <td colSpan="6" className="px-3 py-4 text-center text-sm text-gray-500">
+                              No revenue entries found for today
+                            </td>
+                          </tr>
+                        );
+                      }
+                    }
+                  })()}
                 </tbody>
               </table>
             </div>
             
             {/* Revenue Summary */}
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Revenue Summary</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Summary for this View</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Total Revenue */}
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="text-sm font-medium text-gray-500">Total Revenue</div>
-                  <div className="mt-1 text-2xl font-semibold text-gray-900">
-                    {formatCurrency(
-                      revenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0)
-                    )}
-                  </div>
-                </div>
-                
-                {/* Added Revenue */}
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="text-sm font-medium text-gray-500">Total Added</div>
-                  <div className="mt-1 text-2xl font-semibold text-green-600">
-                    {formatCurrency(
-                      revenues
-                        .filter(rev => parseFloat(rev.amount) > 0)
-                        .reduce((sum, rev) => sum + parseFloat(rev.amount), 0)
-                    )}
-                  </div>
-                </div>
-                
-                {/* Minused Revenue */}
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="text-sm font-medium text-gray-500">Total Expenses</div>
-                  <div className="mt-1 text-2xl font-semibold text-red-600">
-                    {formatCurrency(
-                      Math.abs(
-                        revenues
-                          .filter(rev => parseFloat(rev.amount) < 0)
-                          .reduce((sum, rev) => sum + parseFloat(rev.amount), 0)
-                      )
-                    )}
-                  </div>
-                </div>
+                {(() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const summaryRevenues = showArchive
+                      ? revenues.filter(r => {
+                          const entryDate = new Date(r.date).toISOString().split('T')[0];
+                          const isArchived = entryDate !== today;
+                          const afterStart = !archiveStartDate || entryDate >= archiveStartDate;
+                          const beforeEnd = !archiveEndDate || entryDate <= archiveEndDate;
+                          return isArchived && afterStart && beforeEnd;
+                        })
+                      : revenues.filter(r => new Date(r.date).toISOString().split('T')[0] === today);
+
+                    const total = summaryRevenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
+                    const added = summaryRevenues.filter(rev => parseFloat(rev.amount) > 0).reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
+                    const expenses = summaryRevenues.filter(rev => parseFloat(rev.amount) < 0).reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
+
+                    return (
+                      <>
+                        {/* Total Revenue */}
+                        <div className="bg-white p-4 rounded-lg shadow">
+                          <div className="text-sm font-medium text-gray-500">Total Revenue</div>
+                          <div className="mt-1 text-2xl font-semibold text-gray-900">
+                            {formatCurrency(total)}
+                          </div>
+                        </div>
+                        
+                        {/* Added Revenue */}
+                        <div className="bg-white p-4 rounded-lg shadow">
+                          <div className="text-sm font-medium text-gray-500">Total Added</div>
+                          <div className="mt-1 text-2xl font-semibold text-green-600">
+                            {formatCurrency(added)}
+                          </div>
+                        </div>
+                        
+                        {/* Minused Revenue */}
+                        <div className="bg-white p-4 rounded-lg shadow">
+                          <div className="text-sm font-medium text-gray-500">Total Expenses</div>
+                          <div className="mt-1 text-2xl font-semibold text-red-600">
+                            {formatCurrency(Math.abs(expenses))}
+                          </div>
+                        </div>
+                      </>
+                    );
+                })()}
               </div>
             </div>
           </div>

@@ -151,10 +151,14 @@ const MembersPage = () => {
 
   const programOptions = ['JACINTH', 'CHALCEDONY'];
 
-  // Get age brackets for the selected program
+  // Get age brackets for all programs
   const getAgeBrackets = () => {
-    if (!currentMember.program || !programData[currentMember.program]) return [];
-    return programData[currentMember.program].ageBrackets;
+    const allBrackets = Object.values(programData).flatMap(program => program.ageBrackets);
+    const uniqueBrackets = Array.from(new Set(allBrackets.map(b => b.range)))
+      .map(range => {
+        return allBrackets.find(b => b.range === range);
+      });
+    return uniqueBrackets;
   };
 
   // Handle program change
@@ -313,8 +317,18 @@ const MembersPage = () => {
           if (key === 'ageBracket') {
             const bracket = getAgeBrackets().find(b => b.range === value);
             if (!bracket) return true;
+
             const age = parseInt(member.age || '0');
-            return age >= bracket.minAge && age <= bracket.maxAge;
+            const rangeParts = bracket.range.split(' - ');
+            const minAge = parseInt(rangeParts[0]);
+            const maxAgeStr = rangeParts[1];
+
+            if (maxAgeStr && maxAgeStr.includes('UP')) {
+              return age >= minAge;
+            } else {
+              const maxAge = parseInt(maxAgeStr);
+              return age >= minAge && age <= maxAge;
+            }
           }
           if (key === 'endorsedBy') {
             // Check the field_worker.name field

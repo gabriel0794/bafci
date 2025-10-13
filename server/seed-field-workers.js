@@ -21,7 +21,9 @@ async function seedFieldWorkers() {
     console.log('Database connection established successfully.');
 
     const fieldWorkers = [
-      { name: 'Romeo S. Lacar Jr.', age: 46, branch_id: 3, member_count: 0 },
+      { name: 'Lovenia M. Lacar', age: 45, branch_id: 4, member_count: 0 },
+      { name: 'Kezhia Nicole M. Lacar', age: 22, branch_id: 2, member_count: 0 },
+
     ];
 
     for (const worker of fieldWorkers) {
