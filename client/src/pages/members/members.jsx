@@ -787,7 +787,7 @@ return (
                             className="group hover:bg-gray-50 w-full cursor-pointer transition-colors"
                             onClick={() => handleMemberClick(member)}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 group-hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap group-hover:bg-gray-50">
                               {member.full_name || 'N/A'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1085,8 +1085,8 @@ return (
                                   <MenuItem value="">
                                     <em>Select Age Bracket...</em>
                                   </MenuItem>
-                                  {getAgeBrackets().map((bracket, index) => (
-                                    <MenuItem key={index} value={bracket.range}>
+                                  {getAgeBrackets().map((bracket) => (
+                                    <MenuItem key={`bracket-${bracket.range}`} value={bracket.range}>
                                       {bracket.range} years
                                     </MenuItem>
                                   ))}

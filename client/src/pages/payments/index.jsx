@@ -11,8 +11,9 @@ const PaymentsPage = () => {
   const [allMembers, setAllMembers] = useState([]);
   const [unpaidMembers, setUnpaidMembers] = useState([]);
   const [paidMembers, setPaidMembers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [searchTermUnpaid, setSearchTermUnpaid] = useState('');
+  const [searchTermPaid, setSearchTermPaid] = useState('');
 
   // Payment dialog state
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -39,44 +40,124 @@ const PaymentsPage = () => {
   }, []);
 
   useEffect(() => {
-    const lowercasedFilter = searchTerm.toLowerCase();
-    const filteredData = allMembers.filter(item => {
-      return Object.keys(item).some(key =>
-        item[key] && item[key].toString().toLowerCase().includes(lowercasedFilter)
-      );
-    });
+    if (!allMembers.length) return;
     
-    // Separate into paid and unpaid members
-    const unpaid = [];
-    const paid = [];
-    
-    filteredData.forEach(member => {
-      if (member.last_payment_date) {
-        paid.push(member);
-      } else {
-        unpaid.push(member);
+    // Filter unpaid members
+    const filteredUnpaid = allMembers.filter(member => {
+      if (member.isPaid) return false;
+      
+      if (searchTermUnpaid) {
+        const searchLower = searchTermUnpaid.toLowerCase();
+        return (
+          member.full_name?.toLowerCase().includes(searchLower) ||
+          member.application_number?.toLowerCase().includes(searchLower)
+        );
       }
+      return true;
     });
     
-    setUnpaidMembers(unpaid);
-    setPaidMembers(paid);
-  }, [searchTerm, allMembers]);
+    // Filter paid members
+    const filteredPaid = allMembers.filter(member => {
+      if (!member.isPaid) return false;
+      
+      if (searchTermPaid) {
+        const searchLower = searchTermPaid.toLowerCase();
+        return (
+          member.full_name?.toLowerCase().includes(searchLower) ||
+          member.application_number?.toLowerCase().includes(searchLower)
+        );
+      }
+      return true;
+    });
+    
+    setUnpaidMembers(filteredUnpaid);
+    setPaidMembers(filteredPaid);
+  }, [allMembers, searchTermUnpaid, searchTermPaid]);
 
   const fetchMembers = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/members', {
+      
+      // Fetch members
+      const membersResponse = await axios.get('http://localhost:5000/api/members', {
         headers: { 'x-auth-token': token }
       });
-      setAllMembers(response.data);
+      
+      // Get current month and year for payment verification
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1; // Months are 1-indexed for the API
+      const currentYear = currentDate.getFullYear();
+      
+      // For local date comparisons (0-indexed months)
+      const localCurrentMonth = currentDate.getMonth();
+
+      // Fetch all payments for the current month to check status
+      const currentMonthPayments = await Promise.all(
+        membersResponse.data.map(async (member) => {
+          try {
+            const paymentResponse = await axios.get(
+              `http://localhost:5000/api/payments/history/${member.id}`,
+              { headers: { 'x-auth-token': token } }
+            );
+            
+            // Find the most recent payment with status 'completed'
+            const latestPayment = paymentResponse.data
+              .filter(payment => payment.status === 'completed' && payment.payment_date)
+              .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))[0];
+            
+            return {
+              memberId: member.id,
+              hasPaid: !!latestPayment,
+              paymentDate: latestPayment?.payment_date,
+              nextPaymentDate: latestPayment?.next_payment // Get the next_payment from the payment record
+            };
+          } catch (error) {
+            console.error(`Error fetching payment history for member ${member.id}:`, error);
+            return { memberId: member.id, hasPaid: false };
+          }
+        })
+      );
+      
+      // Create a map of member IDs to their payment status and next payment date
+      const paymentStatusMap = new Map();
+      currentMonthPayments.forEach(({ memberId, hasPaid, paymentDate, nextPaymentDate }) => {
+        paymentStatusMap.set(memberId, { 
+          hasPaid, 
+          paymentDate,
+          nextPaymentDate: nextPaymentDate || (() => {
+            // Fallback: if no next_payment in the payment record, calculate it
+            if (!paymentDate) return null;
+            const nextDate = new Date(paymentDate);
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            return nextDate.toISOString().split('T')[0];
+          })()
+        });
+      });
+      
+      // Update members with their payment status and next payment date
+      const membersWithStatus = membersResponse.data.map(member => {
+        const paymentStatus = paymentStatusMap.get(member.id) || { 
+          hasPaid: false,
+          nextPaymentDate: null
+        };
+        
+        return {
+          ...member,
+          isPaid: paymentStatus.hasPaid,
+          last_payment_date: paymentStatus.paymentDate || member.last_payment_date,
+          next_payment_date: paymentStatus.nextPaymentDate || member.next_payment_date
+        };
+      });
+      
+      setAllMembers(membersWithStatus);
       
       // Separate into paid and unpaid members
       const unpaid = [];
       const paid = [];
       
-      response.data.forEach(member => {
-        if (member.last_payment_date) {
+      membersWithStatus.forEach(member => {
+        if (member.isPaid) {
           paid.push(member);
         } else {
           unpaid.push(member);
@@ -97,13 +178,21 @@ const PaymentsPage = () => {
   const handlePaymentOpen = async (member) => {
     setPaymentMember(member);
     setPaymentLoading(true);
+    
+    // Auto-fill the payment amount with the member's contribution amount
+    setNewPayment(prev => ({
+      ...prev,
+      amount: member.contribution_amount || ''
+    }));
+    
     setPaymentOpen(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5000/api/payments/${member.application_number}`, {
+      // Use the correct endpoint format: /api/payments/history/:memberId
+      const response = await axios.get(`http://localhost:5000/api/payments/history/${member.id}`, {
         headers: { 'x-auth-token': token }
       });
-      setPaymentHistory(response.data);
+      setPaymentHistory(response.data || []);
     } catch (error) {
       console.error('Error fetching payment history:', error);
       setPaymentHistory([]);
@@ -173,71 +262,80 @@ const PaymentsPage = () => {
       };
       
       try {
-        // First, create the payment record
-        const paymentResponse = await axios.post('http://localhost:5000/api/payments', paymentPayload, {
+        // Create the payment record
+        const response = await axios.post('http://localhost:5000/api/payments', paymentPayload, {
           headers: { 
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-auth-token': token 
           }
         });
-        
-        // Then update the member's last payment dates
-        const updateData = {
-          last_payment_date: paymentDate,
-          next_payment_date: nextPaymentDate.toISOString().split('T')[0]
-        };
-        
-        const response = await axios.put(`http://localhost:5000/api/members/${paymentMember.id}`, updateData, {
-          headers: { 
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        // Update local state with the server's response
-        if (response.data) {
-          // Map the server's camelCase properties to our snake_case format
-          const updatedMember = {
-            ...response.data,
-            full_name: response.data.fullName || response.data.full_name,
-            application_number: response.data.applicationNumber || response.data.application_number,
-            last_payment_date: response.data.lastPaymentDate || response.data.last_payment_date,
-            next_payment_date: response.data.nextPaymentDate || response.data.next_payment_date,
-            payment_history: response.data.paymentHistory || response.data.payment_history || []
-          };
-          
-          // Update the payment member data
-          setPaymentMember(prev => ({
-            ...prev,
-            ...updatedMember,
+
+        // Update the member's last payment date
+        const updateResponse = await axios.put(
+          `http://localhost:5000/api/members/${paymentMember.id}`,
+          {
             last_payment_date: paymentDate,
             next_payment_date: nextPaymentDate.toISOString().split('T')[0]
-          }));
+          },
+          {
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-auth-token': token 
+            }
+          }
+        );
+
+        // Update the member's isPaid status in the local state
+        setAllMembers(prevMembers => 
+          prevMembers.map(member => 
+            member.id === paymentMember.id 
+              ? { 
+                  ...member, 
+                  isPaid: true,
+                  last_payment_date: paymentDate,
+                  next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+                } 
+              : member
+          )
+        );
+        
+        // Update the paid and unpaid lists
+        setPaidMembers(prev => [
+          ...prev.filter(m => m.id !== paymentMember.id),
+          { 
+            ...paymentMember, 
+            isPaid: true,
+            last_payment_date: paymentDate,
+            next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+          }
+        ]);
+        setUnpaidMembers(prev => prev.filter(m => m.id !== paymentMember.id));
+
+        // Refresh the payment history
+        const historyResponse = await axios.get(
+          `http://localhost:5000/api/payments/history/${paymentMember.id}`,
+          { headers: { 'x-auth-token': token } }
+        );
+        setPaymentHistory(historyResponse.data);
+
+        // Close the payment dialog and show success message
+        handlePaymentClose();
+        showAlert(
+          'Payment Successful',
+          `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${paymentMember.full_name || 'the member'}.`,
+          'success'
+        );
           
-          // Refresh the payment history
-          const historyResponse = await axios.get(`http://localhost:5000/api/payments/history/${paymentMember.id}`, {
-            headers: { 'x-auth-token': token }
-          });
-          setPaymentHistory(historyResponse.data);
+        // Reset form but keep the amount for next payment
+        setNewPayment({
+          amount: paymentMember.contribution_amount || '',
+          payment_date: new Date().toISOString().split('T')[0],
+          reference_number: '',
+          notes: ''
+        });
           
-          // Show success message
-          showAlert(
-            'Payment Successful',
-            `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${paymentMember.full_name || 'the member'}.`,
-            'success'
-          );
-          
-          // Reset form but keep the amount for next payment
-          setNewPayment({
-            amount: paymentMember.contribution_amount || '',
-            payment_date: new Date().toISOString().split('T')[0],
-            reference_number: '',
-            notes: ''
-          });
-          
-          // Refresh the members list to update the UI
-          fetchMembers();
-        }
+        // Refresh the members list to update the UI
+        fetchMembers();
       } catch (error) {
         console.error('Error in payment process:', error);
         let errorMessage = 'Failed to record payment';
@@ -290,23 +388,25 @@ const PaymentsPage = () => {
       />
       <div className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Record Payments</h1>
-          
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <TextField
-              fullWidth
-              label="Search Members"
-              variant="outlined"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </Paper>
+          <div className="p-6">
+            <Typography variant="h6" className="mb-4">Member Payments</Typography>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Unpaid Members Column */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="bg-red-100 p-4 border-b border-red-200">
-                <h2 className="text-lg font-semibold text-red-800">Unpaid Members ({unpaidMembers.length})</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-red-800">Unpaid Members ({unpaidMembers.length})</h2>
+                  <TextField
+                    label="Search Unpaid"
+                    variant="outlined"
+                    size="small"
+                    value={searchTermUnpaid}
+                    onChange={(e) => setSearchTermUnpaid(e.target.value)}
+                    className="bg-white w-64"
+                  />
+                </div>
               </div>
               <TableContainer>
                 <Table>
@@ -323,19 +423,17 @@ const PaymentsPage = () => {
                         <TableCell colSpan={3} align="center">Loading...</TableCell>
                       </TableRow>
                     ) : unpaidMembers.length > 0 ? (
-                      unpaidMembers.map(member => (
-                        <TableRow key={member.application_number}>
-                          <TableCell>{member.full_name}</TableCell>
-                          <TableCell>{member.program}</TableCell>
+                      unpaidMembers.map((member, index) => (
+                        <TableRow key={`unpaid-${member.id || member.application_number || index}`}>
+                          <TableCell>{member.full_name || 'N/A'}</TableCell>
+                          <TableCell>{member.program || 'N/A'}</TableCell>
                           <TableCell>
-                            <Button 
-                              variant="contained" 
-                              color="primary" 
-                              size="small"
+                            <button 
+                              className="inline-flex justify-center rounded-md w-full px-3 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 shadow-sm focus-visible:outline-offset-2"
                               onClick={() => handlePaymentOpen(member)}
                             >
                               Pay
-                            </Button>
+                            </button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -352,14 +450,24 @@ const PaymentsPage = () => {
             {/* Paid Members Column */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="bg-green-100 p-4 border-b border-green-200">
-                <h2 className="text-lg font-semibold text-green-800">Paid Members ({paidMembers.length})</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-green-800">Paid Members ({paidMembers.length})</h2>
+                  <TextField
+                    label="Search Paid"
+                    variant="outlined"
+                    size="small"
+                    value={searchTermPaid}
+                    onChange={(e) => setSearchTermPaid(e.target.value)}
+                    className="bg-white w-64"
+                  />
+                </div>
               </div>
               <TableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
                       <TableCell>Name</TableCell>
-                      <TableCell>Last Payment</TableCell>
+                      <TableCell>Next Payment</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -369,12 +477,12 @@ const PaymentsPage = () => {
                         <TableCell colSpan={3} align="center">Loading...</TableCell>
                       </TableRow>
                     ) : paidMembers.length > 0 ? (
-                      paidMembers.map(member => (
-                        <TableRow key={member.application_number}>
-                          <TableCell>{member.full_name}</TableCell>
+                      paidMembers.map((member, index) => (
+                        <TableRow key={`paid-${member.id || member.application_number || index}`}>
+                          <TableCell>{member.full_name || 'N/A'}</TableCell>
                           <TableCell>
-                            {member.last_payment_date ? 
-                              new Date(member.last_payment_date).toLocaleDateString() : 
+                            {member.next_payment_date ? 
+                              new Date(member.next_payment_date).toLocaleDateString() : 
                               'N/A'}
                           </TableCell>
                           <TableCell>
@@ -466,8 +574,8 @@ const PaymentsPage = () => {
                                   type="number"
                                   name="amount"
                                   value={newPayment.amount}
-                                  onChange={handlePaymentChange}
-                                  className="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
+                                  readOnly
+                                  className="block w-full rounded-md border-gray-300 pl-7 pr-12 bg-gray-50 text-gray-700 cursor-not-allowed sm:text-sm p-2"
                                   placeholder="0.00"
                                   step="0.01"
                                   min="0"
@@ -543,13 +651,13 @@ const PaymentsPage = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                  {paymentHistory.map((payment) => (
-                                    <tr key={payment.id}>
+                                  {paymentHistory.map((payment, index) => (
+                                    <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
                                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {new Date(payment.payment_date).toLocaleDateString()}
+                                        {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        ₱{Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                         {payment.reference_number || '—'}
