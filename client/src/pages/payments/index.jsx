@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
   Box, Button, TextField, Typography, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Dialog
+  TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogActions, DialogContent, DialogContentText
 } from '@mui/material';
 import CustomAlert from '../../components/common/CustomAlert';
 import Navbar from '../../components/Navbar';
@@ -17,7 +17,10 @@ const PaymentsPage = () => {
 
   // Payment dialog state
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [paymentMember, setPaymentMember] = useState(null);
+  const paymentFormRef = useRef(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [newPayment, setNewPayment] = useState({
@@ -164,8 +167,15 @@ const PaymentsPage = () => {
         }
       });
       
+      // Sort paid members by last_payment_date in descending order (most recent first)
+      const sortedPaid = [...paid].sort((a, b) => {
+        const dateA = a.last_payment_date ? new Date(a.last_payment_date) : new Date(0);
+        const dateB = b.last_payment_date ? new Date(b.last_payment_date) : new Date(0);
+        return dateB - dateA; // Sort in descending order (most recent first)
+      });
+      
       setUnpaidMembers(unpaid);
-      setPaidMembers(paid);
+      setPaidMembers(sortedPaid);
     } catch (error) {
       console.error('Error fetching members:', error);
       showAlert('Error', 'Failed to fetch members.', 'error');
@@ -429,7 +439,7 @@ const PaymentsPage = () => {
                           <TableCell>{member.program || 'N/A'}</TableCell>
                           <TableCell>
                             <button 
-                              className="inline-flex justify-center rounded-md w-full px-3 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 shadow-sm focus-visible:outline-offset-2"
+                              className="cursor-pointer inline-flex justify-center rounded-md w-full px-3 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 shadow-sm focus-visible:outline-offset-2"
                               onClick={() => handlePaymentOpen(member)}
                             >
                               Pay
@@ -486,14 +496,12 @@ const PaymentsPage = () => {
                               'N/A'}
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              variant="outlined" 
-                              color="primary" 
-                              size="small"
+                          <button 
+                              className="cursor-pointer inline-flex justify-center rounded-md w-full px-3 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 shadow-sm focus-visible:outline-offset-2"
                               onClick={() => handlePaymentOpen(member)}
                             >
                               View
-                            </Button>
+                            </button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -558,7 +566,7 @@ const PaymentsPage = () => {
                       </div>
 
                       {/* Payment Form */}
-                      <form onSubmit={handlePaymentSubmit}>
+                      <form ref={paymentFormRef} onSubmit={handlePaymentSubmit} className="space-y-6">
                         <div className="space-y-4">
                           <h4 className="text-sm font-medium text-gray-700">Payment Details</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -684,7 +692,8 @@ const PaymentsPage = () => {
                             Cancel
                           </button>
                           <button
-                            type="submit"
+                            type="button"
+                            onClick={() => setConfirmOpen(true)}
                             className="inline-flex justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline-offset-2 focus-visible:outline-green-600"
                           >
                             Record Payment
@@ -698,6 +707,46 @@ const PaymentsPage = () => {
             </div>
           </div>
         </div>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title" className="bg-gray-50 px-6 py-4">
+          <span className="text-lg font-medium text-gray-900">Confirm Payment</span>
+        </DialogTitle>
+        <DialogContent className="bg-white px-6 py-4">
+          <DialogContentText id="alert-dialog-description" className="text-gray-700">
+            Are you sure you want to record this payment?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions className="bg-gray-50 px-6 py-4">
+          <button
+            onClick={() => setConfirmOpen(false)}
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              setConfirmOpen(false);
+              // Use the form's submit method directly
+              if (paymentFormRef.current) {
+                paymentFormRef.current.dispatchEvent(
+                  new Event('submit', { cancelable: true, bubbles: true })
+                );
+              }
+            }}
+            className="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+            autoFocus
+          >
+            Confirm
+          </button>
+        </DialogActions>
       </Dialog>
     </div>
   );

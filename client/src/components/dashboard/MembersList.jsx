@@ -155,13 +155,6 @@ export default function MembersList() {
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    {viewMember?.picture && (
-                      <img
-                        className="h-16 w-16 object-cover rounded-full border-2 border-gray-300"
-                        src={viewMember.picture}
-                        alt="Member"
-                      />
-                    )}
                     <button
                       onClick={window.print}
                       className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 print:hidden"
@@ -179,9 +172,10 @@ export default function MembersList() {
                         <div className="flex-shrink-0">
                           {viewMember.picture ? (
                             <img
-                              className="h-32 w-32 rounded-full border-2 border-gray-300 object-cover"
-                              src={viewMember.picture}
+                              className="h-32 w-32 rounded-full border-2 border-gray-300 object-cover cursor-pointer transition-transform hover:scale-105"
+                              src={`http://localhost:5000/uploads/${viewMember.picture}`}
                               alt={viewMember.full_name || 'Member'}
+                              onClick={() => window.open(`http://localhost:5000/uploads/${viewMember.picture}`, '_blank')}
                             />
                           ) : (
                             <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -454,6 +448,19 @@ export default function MembersList() {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        {member.picture ? (
+                          <img
+                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                            src={`http://localhost:5000/uploads/${member.picture}`}
+                            alt={member.full_name || 'Member'}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                            <span className="text-xs">No Photo</span>
+                          </div>
+                        )}
+                      </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
                           {member.full_name || 'N/A'}

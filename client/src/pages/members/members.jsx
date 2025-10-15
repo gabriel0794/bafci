@@ -787,8 +787,27 @@ return (
                             className="group hover:bg-gray-50 w-full cursor-pointer transition-colors"
                             onClick={() => handleMemberClick(member)}
                           >
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap group-hover:bg-gray-50">
-                              {member.full_name || 'N/A'}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-10 w-10">
+                                  {member.picture ? (
+                                    <img
+                                      className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                      src={`http://localhost:5000/uploads/${member.picture}`}
+                                      alt={member.full_name || 'Member'}
+                                    />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                                      <span className="text-xs">No Photo</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="ml-3">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {member.full_name || 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {member.contact_number || 'N/A'}
