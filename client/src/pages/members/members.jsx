@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import html2pdf from 'html2pdf.js';
 import {
   Box, Button, TextField, Typography, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent,
@@ -558,6 +559,211 @@ const MembersPage = () => {
   const handleViewClose = () => {
     setViewOpen(false);
     setViewMember(null);
+  };
+
+  // Generate PDF with compact single-page layout
+  const handleGeneratePdf = async () => {
+    if (!viewMember) return;
+    
+    const pdfContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; font-size: 10px; color: #000; background: #fff; }
+          .page { padding: 15mm; max-width: 210mm; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 3px solid #6b7c5e; }
+          .header h1 { font-size: 20px; color: #6b7c5e; margin-bottom: 5px; }
+          .header-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+          .header-left { text-align: left; font-size: 9px; color: #666; }
+          .photo-box { width: 100px; height: 100px; border: 2px solid #333; background: #f9f9f9; display: flex; align-items: center; justify-content: center; }
+          .photo { width: 100%; height: 100%; object-fit: cover; }
+          .photo-placeholder { font-size: 9px; color: #999; text-align: center; }
+          
+          .section { margin-bottom: 12px; }
+          .section-header { background: #6b7c5e; color: white; padding: 4px 10px; font-weight: bold; font-size: 11px; margin-bottom: 8px; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          td { padding: 5px 8px; border: 1px solid #ddd; vertical-align: top; }
+          .label-cell { background: #f5f5f5; font-weight: bold; width: 25%; font-size: 9px; }
+          .value-cell { width: 25%; font-size: 10px; }
+          .label-cell-wide { background: #f5f5f5; font-weight: bold; width: 15%; font-size: 9px; }
+          .value-cell-wide { width: 35%; font-size: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="header">
+          <h1>BAFCI</h1>
+            <h1>Members Information</h1>
+            <div class="header-info">
+              <div class="header-left">
+                Application #: ${viewMember.application_number || 'N/A'}<br>
+                Generated: ${new Date().toLocaleDateString()}
+              </div>
+              <div class="photo-box">
+                ${viewMember.picture ? 
+                  `<img src="http://localhost:5000/uploads/${viewMember.picture}" class="photo" alt="Member Photo" />` : 
+                  `<div class="photo-placeholder">No Photo<br>Available</div>`
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Personal Information -->
+          <div class="section">
+            <div class="section-header">Personal Information</div>
+            <table>
+              <tr>
+                <td class="label-cell">Full Name:</td>
+                <td class="value-cell">${viewMember.full_name || 'N/A'}</td>
+                <td class="label-cell">Nickname:</td>
+                <td class="value-cell">${viewMember.nickname || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Date of Birth:</td>
+                <td class="value-cell">${viewMember.date_of_birth ? new Date(viewMember.date_of_birth).toLocaleDateString() : 'N/A'}</td>
+                <td class="label-cell">Age:</td>
+                <td class="value-cell">${viewMember.age || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Place of Birth:</td>
+                <td class="value-cell">${viewMember.place_of_birth || 'N/A'}</td>
+                <td class="label-cell">Sex:</td>
+                <td class="value-cell">${viewMember.sex || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Civil Status:</td>
+                <td class="value-cell">${viewMember.civil_status || 'N/A'}</td>
+                <td class="label-cell">Contact:</td>
+                <td class="value-cell">${viewMember.contact_number || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Complete Address:</td>
+                <td class="value-cell" colspan="3">${viewMember.complete_address || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Provincial Address:</td>
+                <td class="value-cell" colspan="3">${viewMember.provincial_address || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Church Affiliation:</td>
+                <td class="value-cell">${viewMember.church_affiliation || 'N/A'}</td>
+                <td class="label-cell">Education:</td>
+                <td class="value-cell">${viewMember.education_attainment || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell">Employment:</td>
+                <td class="value-cell">${viewMember.present_employment || 'N/A'}</td>
+                <td class="label-cell">Employer:</td>
+                <td class="value-cell">${viewMember.employer_name || 'N/A'}</td>
+              </tr>
+              ${viewMember.spouse_name ? `
+              <tr>
+                <td class="label-cell">Spouse Name:</td>
+                <td class="value-cell">${viewMember.spouse_name}</td>
+                <td class="label-cell">Spouse DOB:</td>
+                <td class="value-cell">${viewMember.spouse_dob ? new Date(viewMember.spouse_dob).toLocaleDateString() : 'N/A'}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+
+          <!-- Beneficiary Information -->
+          ${viewMember.beneficiary_name ? `
+          <div class="section">
+            <div class="section-header">Beneficiary Information</div>
+            <table>
+              <tr>
+                <td class="label-cell-wide">Name:</td>
+                <td class="value-cell-wide">${viewMember.beneficiary_name}</td>
+                <td class="label-cell-wide">Relationship:</td>
+                <td class="value-cell-wide">${viewMember.beneficiary_relationship || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell-wide">Date of Birth:</td>
+                <td class="value-cell-wide">${viewMember.beneficiary_dob ? new Date(viewMember.beneficiary_dob).toLocaleDateString() : 'N/A'}</td>
+                <td class="label-cell-wide">Age:</td>
+                <td class="value-cell-wide">${viewMember.beneficiary_age || 'N/A'}</td>
+              </tr>
+            </table>
+          </div>
+          ` : ''}
+
+          <!-- Membership Details -->
+          <div class="section">
+            <div class="section-header">Membership Details</div>
+            <table>
+              <tr>
+                <td class="label-cell-wide">Program:</td>
+                <td class="value-cell-wide">${viewMember.program || 'N/A'}</td>
+                <td class="label-cell-wide">Branch:</td>
+                <td class="value-cell-wide">${viewMember.branch || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell-wide">Contribution Amount:</td>
+                <td class="value-cell-wide">${viewMember.contribution_amount ? viewMember.contribution_amount + ' PHP' : 'N/A'}</td>
+                <td class="label-cell-wide">Availment Period:</td>
+                <td class="value-cell-wide">${viewMember.availment_period || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell-wide">Date Paid:</td>
+                <td class="value-cell-wide">${viewMember.date_paid ? new Date(viewMember.date_paid).toLocaleDateString() : 'N/A'}</td>
+                <td class="label-cell-wide">O.R. Number:</td>
+                <td class="value-cell-wide">${viewMember.or_number || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell-wide">Received By:</td>
+                <td class="value-cell-wide">${viewMember.received_by || 'N/A'}</td>
+                <td class="label-cell-wide">Field Worker:</td>
+                <td class="value-cell-wide">${viewMember.field_worker?.name || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell-wide">Date Applied:</td>
+                <td class="value-cell-wide">${viewMember.date_applied ? new Date(viewMember.date_applied).toLocaleDateString() : 'N/A'}</td>
+                <td class="label-cell-wide">Last Contribution:</td>
+                <td class="value-cell-wide">${viewMember.last_contribution_date ? new Date(viewMember.last_contribution_date).toLocaleDateString() : '--'}</td>
+              </tr>
+              <tr>
+                <td class="label-cell-wide">Next Due Date:</td>
+                <td class="value-cell-wide">${viewMember.next_due_date ? new Date(viewMember.next_due_date).toLocaleDateString() : '--'}</td>
+                <td class="label-cell-wide"></td>
+                <td class="value-cell-wide"></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      const element = document.createElement('div');
+      element.innerHTML = pdfContent;
+      
+      const opt = {
+        margin: 0,
+        filename: `member-${viewMember.application_number || 'info'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait' 
+        }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
   };
 
   // Helper function to show alerts
@@ -1588,10 +1794,10 @@ return (
                   </div>
                   <div className="flex items-center space-x-4">
                     <button
-                      onClick={window.print}
-                      className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 print:hidden"
+                      onClick={handleGeneratePdf}
+                      className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
-                      Print / Save as PDF
+                      Download PDF
                     </button>
                   </div>
                 </div>

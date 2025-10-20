@@ -34,6 +34,7 @@ const ConfirmationDialog = ({ isOpen, onClose, onConfirm, title, message, confir
 const RevenuePage = () => {
   const [revenues, setRevenues] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [memberPayments, setMemberPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showRevenueConfirm, setShowRevenueConfirm] = useState(false);
@@ -56,6 +57,7 @@ const RevenuePage = () => {
   useEffect(() => {
     fetchRevenues();
     fetchBranches();
+    fetchMemberPayments();
   }, []);
 
   const fetchBranches = async () => {
@@ -82,6 +84,69 @@ const RevenuePage = () => {
       }
     } catch (err) {
       console.error('Error fetching branches:', err);
+    }
+  };
+
+  const fetchMemberPayments = async () => {
+    try {
+      const token = authService.getAuthToken();
+      
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      // First, fetch all members
+      const membersResponse = await fetch('http://localhost:5000/api/members', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token,
+        },
+        credentials: 'include',
+      });
+
+      if (!membersResponse.ok) {
+        console.error('Failed to fetch members');
+        return;
+      }
+
+      const members = await membersResponse.json();
+
+      // Then fetch payment history for each member
+      const allPayments = [];
+      for (const member of members) {
+        try {
+          const paymentResponse = await fetch(
+            `http://localhost:5000/api/payments/history/${member.id}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-auth-token': token,
+              },
+              credentials: 'include',
+            }
+          );
+
+          if (paymentResponse.ok) {
+            const payments = await paymentResponse.json();
+            // Add member info to each payment for reference
+            const paymentsWithMember = payments.map(payment => ({
+              ...payment,
+              member_name: member.full_name,
+              member_id: member.id
+            }));
+            allPayments.push(...paymentsWithMember);
+          }
+        } catch (error) {
+          console.error(`Error fetching payments for member ${member.id}:`, error);
+        }
+      }
+
+      setMemberPayments(allPayments);
+    } catch (err) {
+      console.error('Error fetching member payments:', err);
     }
   };
 
@@ -572,7 +637,7 @@ const RevenuePage = () => {
             {/* Revenue Summary */}
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
               <h3 className="text-lg font-medium text-gray-900 mb-3">Summary for this View</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(() => {
                     const today = new Date().toISOString().split('T')[0];
                     const summaryRevenues = showArchive
@@ -585,33 +650,70 @@ const RevenuePage = () => {
                         })
                       : revenues.filter(r => new Date(r.date).toISOString().split('T')[0] === today);
 
-                    const total = summaryRevenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
+                    // Filter member payments based on the same date range
+                    const summaryPayments = showArchive
+                      ? memberPayments.filter(p => {
+                          const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
+                          const isArchived = paymentDate !== today;
+                          const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
+                          const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
+                          return isArchived && afterStart && beforeEnd;
+                        })
+                      : memberPayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
+
+                    const revenueTotal = summaryRevenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
                     const added = summaryRevenues.filter(rev => parseFloat(rev.amount) > 0).reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
                     const expenses = summaryRevenues.filter(rev => parseFloat(rev.amount) < 0).reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
+                    
+                    // Calculate member payments total
+                    const memberPaymentsTotal = summaryPayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+                    
+                    // Total revenue including member payments
+                    const totalRevenue = revenueTotal + memberPaymentsTotal;
 
                     return (
                       <>
-                        {/* Total Revenue */}
+                        {/* Total Revenue (including member payments) */}
                         <div className="bg-white p-4 rounded-lg shadow">
                           <div className="text-sm font-medium text-gray-500">Total Revenue</div>
                           <div className="mt-1 text-2xl font-semibold text-gray-900">
-                            {formatCurrency(total)}
+                            {formatCurrency(totalRevenue)}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            Includes member payments
+                          </div>
+                        </div>
+
+                        {/* Member Payments */}
+                        <div className="bg-white p-4 rounded-lg shadow">
+                          <div className="text-sm font-medium text-gray-500">Member Payments</div>
+                          <div className="mt-1 text-2xl font-semibold text-blue-600">
+                            {formatCurrency(memberPaymentsTotal)}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            {summaryPayments.length} {summaryPayments.length === 1 ? 'payment' : 'payments'}
                           </div>
                         </div>
                         
                         {/* Added Revenue */}
                         <div className="bg-white p-4 rounded-lg shadow">
-                          <div className="text-sm font-medium text-gray-500">Total Added</div>
+                          <div className="text-sm font-medium text-gray-500">Other Revenue</div>
                           <div className="mt-1 text-2xl font-semibold text-green-600">
                             {formatCurrency(added)}
                           </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            From revenue entries
+                          </div>
                         </div>
                         
-                        {/* Minused Revenue */}
+                        {/* Expenses */}
                         <div className="bg-white p-4 rounded-lg shadow">
                           <div className="text-sm font-medium text-gray-500">Total Expenses</div>
                           <div className="mt-1 text-2xl font-semibold text-red-600">
                             {formatCurrency(Math.abs(expenses))}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            From revenue entries
                           </div>
                         </div>
                       </>

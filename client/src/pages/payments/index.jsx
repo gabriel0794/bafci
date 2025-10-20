@@ -23,6 +23,7 @@ const PaymentsPage = () => {
   const paymentFormRef = useRef(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [newPayment, setNewPayment] = useState({
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -72,9 +73,16 @@ const PaymentsPage = () => {
       }
       return true;
     });
+
+    // Sort paid members by most recent payment date (descending - newest first)
+    const sortedPaid = filteredPaid.sort((a, b) => {
+      const dateA = a.last_payment_date ? new Date(a.last_payment_date) : new Date(0);
+      const dateB = b.last_payment_date ? new Date(b.last_payment_date) : new Date(0);
+      return dateB - dateA; // Descending order (most recent first)
+    });
     
     setUnpaidMembers(filteredUnpaid);
-    setPaidMembers(filteredPaid);
+    setPaidMembers(sortedPaid);
   }, [allMembers, searchTermUnpaid, searchTermPaid]);
 
   const fetchMembers = async () => {
@@ -377,6 +385,39 @@ const PaymentsPage = () => {
     }
   };
 
+  // Helper function to check if payment is due
+  const isPaymentDue = () => {
+    if (!paymentHistory || paymentHistory.length === 0) {
+      // No payment history, payment is due
+      return true;
+    }
+
+    // Get the most recent payment
+    const sortedPayments = [...paymentHistory].sort((a, b) => 
+      new Date(b.payment_date) - new Date(a.payment_date)
+    );
+    const lastPayment = sortedPayments[0];
+
+    if (!lastPayment || !lastPayment.payment_date) {
+      return true;
+    }
+
+    // Calculate if one month has passed since last payment
+    const lastPaymentDate = new Date(lastPayment.payment_date);
+    const today = new Date();
+    
+    // Set both dates to start of day for accurate comparison
+    lastPaymentDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate the next due date (1 month after last payment)
+    const nextDueDate = new Date(lastPaymentDate);
+    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+
+    // Payment is due if today is on or after the next due date
+    return today >= nextDueDate;
+  };
+
   // Alert handlers
   const showAlert = (title, message, severity = 'info') => {
     setAlert({ open: true, title, message, severity });
@@ -635,69 +676,133 @@ const PaymentsPage = () => {
 
                         {/* Payment History */}
                         <div className="mt-6">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-gray-700">Payment History</h4>
-                            <span className="text-xs text-gray-500">
-                              {paymentHistory.length} {paymentHistory.length === 1 ? 'record' : 'records'} found
-                            </span>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-medium text-gray-700">Payment Summary</h4>
+                              <span className="text-xs text-gray-500">
+                                {paymentHistory.length} {paymentHistory.length === 1 ? 'payment' : 'payments'}
+                              </span>
+                            </div>
+                            
+                            {paymentHistory.length > 0 ? (
+                              <>
+                                <div className="flex items-center justify-between py-2">
+                                  <span className="text-sm font-medium text-gray-600">Total Amount Paid:</span>
+                                  <span className="text-lg font-bold text-green-600">
+                                    ₱{paymentHistory.reduce((sum, payment) => sum + Number(payment.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                                
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPaymentHistory(!showPaymentHistory)}
+                                  className="text-sm text-green-600 hover:text-green-700 font-medium mt-2 flex items-center"
+                                >
+                                  {showPaymentHistory ? (
+                                    <>
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                      </svg>
+                                      Hide Payment History
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                      Show Payment History
+                                    </>
+                                  )}
+                                </button>
+
+                                {showPaymentHistory && (
+                                  <div className="mt-4 overflow-hidden border border-gray-200 rounded-lg">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Date
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Amount
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Reference
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="bg-white divide-y divide-gray-200">
+                                        {paymentHistory.map((payment, index) => (
+                                          <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                              {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                              {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                              {payment.reference_number || '—'}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-center py-2 text-sm text-gray-500">
+                                No payment history found for this member.
+                              </div>
+                            )}
                           </div>
-                          
-                          {paymentHistory.length > 0 ? (
-                            <div className="overflow-hidden border border-gray-200 rounded-lg">
-                              <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Date
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Amount
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Reference
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                  {paymentHistory.map((payment, index) => (
-                                    <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
-                                      </td>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
-                                      </td>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {payment.reference_number || '—'}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 text-sm text-gray-500 bg-gray-50 rounded-lg">
-                              No payment history found for this member.
-                            </div>
-                          )}
                         </div>
 
                         {/* Form Actions */}
-                        <div className="mt-6 flex justify-end space-x-3">
-                          <button
-                            type="button"
-                            onClick={handlePaymentClose}
-                            className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmOpen(true)}
-                            className="inline-flex justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline-offset-2 focus-visible:outline-green-600"
-                          >
-                            Record Payment
-                          </button>
+                        <div className="mt-6">
+                          {!isPaymentDue() && paymentHistory.length > 0 && (
+                            <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                              <div className="flex">
+                                <svg className="h-5 w-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <div className="text-sm text-yellow-700">
+                                  <p className="font-medium">Payment not due yet</p>
+                                  <p className="mt-1">
+                                    Last payment: {new Date(paymentHistory.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))[0].payment_date).toLocaleDateString()}
+                                    {' • '}
+                                    Next due: {(() => {
+                                      const lastDate = new Date(paymentHistory.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))[0].payment_date);
+                                      lastDate.setMonth(lastDate.getMonth() + 1);
+                                      return lastDate.toLocaleDateString();
+                                    })()}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex justify-end space-x-3">
+                            <button
+                              type="button"
+                              onClick={handlePaymentClose}
+                              className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmOpen(true)}
+                              disabled={!isPaymentDue()}
+                              className={`inline-flex justify-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm focus-visible:outline-offset-2 ${
+                                isPaymentDue()
+                                  ? 'bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600 cursor-pointer'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                              title={!isPaymentDue() ? 'Payment is not due yet' : 'Record payment'}
+                            >
+                              Record Payment
+                            </button>
+                          </div>
                         </div>
                       </form>
                     </div>

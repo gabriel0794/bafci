@@ -352,7 +352,7 @@ export default function MembersList() {
   const uniqueEndorsedBy = [...new Set(members.map(member => member.field_worker?.name))].filter(Boolean);
   
   return (
-    <div className="py-6">
+    <div className="px-6 py-6">
       <style>{printStyles}</style>
       
       {/* View Member Dialog */}
@@ -513,40 +513,40 @@ export default function MembersList() {
         </div>
       </Dialog>
       
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h2 className="text-lg font-medium text-gray-900">Members List</h2>
           <p className="text-sm text-gray-500 mt-1">Recent member activities</p>
         </div>
         <button
           onClick={() => navigate('/members')}
-          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
         >
           View All Members
         </button>
       </div>
 
       {/* Search and Filters */}
-      <div className="mb-4 space-y-4">
+      <div className="mb-6 space-y-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
+            className="block w-full pl-10 pr-24 py-2.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
             placeholder="Search by name, program, or branch"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           {(searchTerm || Object.values(filters).some(Boolean)) && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2">
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
                   title="Clear search"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -557,7 +557,7 @@ export default function MembersList() {
               {Object.values(filters).some(Boolean) && (
                 <button
                   onClick={clearFilters}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-gray-500 hover:text-gray-700 font-medium"
                   title="Clear all filters"
                 >
                   Clear Filters
@@ -568,12 +568,12 @@ export default function MembersList() {
         </div>
         
         {/* Filter Dropdowns */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Program Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Program</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Program</label>
             <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border text-sm"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm py-2 px-3 border"
               value={filters.program}
               onChange={(e) => handleFilterChange('program', e.target.value)}
             >
@@ -588,9 +588,9 @@ export default function MembersList() {
           
           {/* Branch Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Branch</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Branch</label>
             <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border text-sm"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm py-2 px-3 border"
               value={filters.branch}
               onChange={(e) => handleFilterChange('branch', e.target.value)}
             >
@@ -605,9 +605,9 @@ export default function MembersList() {
           
           {/* Endorsed By Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Endorsed By</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Endorsed By</label>
             <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border text-sm"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm py-2 px-3 border"
               value={filters.endorsedBy}
               onChange={(e) => handleFilterChange('endorsedBy', e.target.value)}
             >
