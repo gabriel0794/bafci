@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import Login from './pages/authentication/login';
 import Signup from './pages/authentication/signup';
 import Dashboard from './pages/dashboard/dashboard';
@@ -6,17 +6,18 @@ import RevenuePage from './pages/revenue';
 import { authService } from './services/api';
 import MembersPage from './pages/members/members';
 import PaymentsPage from './pages/payments';
+import Layout from './components/Layout';
 
 // Create a protected route component
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = () => {
   const token = authService.getAuthToken();
-  return token ? children : <Navigate to="/login" />;
+  return token ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Login />,
+    element: <Navigate to="/dashboard" replace />,
   },
   {
     path: '/login',
@@ -24,45 +25,35 @@ const router = createBrowserRouter([
   },
   {
     path: '/signup',
-    element: (
-      <ProtectedRoute>
-        <Signup />
-      </ProtectedRoute>
-    ),
+    element: <Signup />,
   },
+  // Protected routes
   {
-    path: '/dashboard',
-    element: (
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    ),
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <Layout><Outlet /></Layout>,
+        children: [
+          {
+            path: '/dashboard',
+            element: <Dashboard />,
+          },
+          {
+            path: '/revenue',
+            element: <RevenuePage />,
+          },
+          {
+            path: '/members',
+            element: <MembersPage />,
+          },
+          {
+            path: '/payments',
+            element: <PaymentsPage />,
+          },
+        ],
+      },
+    ],
   },
-  {
-    path: '/revenue',
-    element: (
-      <ProtectedRoute>
-        <RevenuePage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/members',
-    element: (
-      <ProtectedRoute>
-        <MembersPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/payments',
-    element: (
-      <ProtectedRoute>
-        <PaymentsPage />
-      </ProtectedRoute>
-    ),
-  },
-
   // Add a catch-all route that redirects to the login page
   {
     path: '*',

@@ -5,6 +5,7 @@ import { authService } from '../../services/api';
 const RevenueSummary = () => {
   // State hooks must be called at the top level
   const [revenues, setRevenues] = useState([]);
+  const [memberPayments, setMemberPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activePeriod, setActivePeriod] = useState('today'); // 'today', 'weekly', 'monthly', 'yearly'
@@ -34,10 +35,12 @@ const RevenueSummary = () => {
   const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
 
   useEffect(() => {
-    const fetchRevenues = async () => {
+    const fetchData = async () => {
       try {
         const token = authService.getAuthToken();
-        const response = await fetch('http://localhost:5000/api/revenue', {
+        
+        // Fetch revenue data
+        const revenueResponse = await fetch('http://localhost:5000/api/revenue', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -46,12 +49,53 @@ const RevenueSummary = () => {
           credentials: 'include',
         });
 
-        if (!response.ok) {
+        if (!revenueResponse.ok) {
           throw new Error('Failed to fetch revenue data');
         }
 
-        const data = await response.json();
-        setRevenues(data);
+        const revenueData = await revenueResponse.json();
+        setRevenues(revenueData);
+
+        // Fetch member payments
+        const membersResponse = await fetch('http://localhost:5000/api/members', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': token,
+          },
+          credentials: 'include',
+        });
+
+        let allPayments = [];
+        if (membersResponse.ok) {
+          const members = await membersResponse.json();
+          
+          // Fetch payment history for each member
+          for (const member of members) {
+            try {
+              const paymentResponse = await fetch(
+                `http://localhost:5000/api/payments/history/${member.id}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-auth-token': token,
+                  },
+                  credentials: 'include',
+                }
+              );
+
+              if (paymentResponse.ok) {
+                const payments = await paymentResponse.json();
+                allPayments.push(...payments);
+              }
+            } catch (error) {
+              console.error(`Error fetching payments for member ${member.id}:`, error);
+            }
+          }
+        }
+
+        setMemberPayments(allPayments);
       } catch (err) {
         console.error('Error fetching revenue data:', err);
         setError('Failed to load revenue data');
@@ -60,7 +104,7 @@ const RevenueSummary = () => {
       }
     };
 
-    fetchRevenues();
+    fetchData();
   }, []);
 
   // Filter revenues by date range
@@ -75,6 +119,18 @@ const RevenueSummary = () => {
       .sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
+  // Filter member payments by date range
+  const filterPaymentsByDateRange = (startDate, endDate) => {
+    if (!memberPayments) return [];
+    return memberPayments
+      .filter(payment => {
+        if (!payment.payment_date) return false;
+        const paymentDate = new Date(payment.payment_date);
+        return paymentDate >= startDate && paymentDate <= endDate;
+      })
+      .sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date));
+  };
+
   if (loading) return <div>Loading revenue data...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
@@ -84,30 +140,48 @@ const RevenueSummary = () => {
   const monthlyRevenues = filterRevenuesByDateRange(monthStart, monthEnd);
   const yearlyRevenues = filterRevenuesByDateRange(yearStart, yearEnd);
 
+  // Filter member payments for each period
+  const dailyPayments = filterPaymentsByDateRange(todayStart, todayEnd);
+  const weeklyPayments = filterPaymentsByDateRange(weekStart, weekEnd);
+  const monthlyPayments = filterPaymentsByDateRange(monthStart, monthEnd);
+  const yearlyPayments = filterPaymentsByDateRange(yearStart, yearEnd);
 
+  // Calculate totals for each period (including member payments)
+  const calculateTotals = (revenueList, paymentList = []) => {
+    // Calculate revenue totals
+    let revenueTotal = 0;
+    let revenueAdded = 0;
+    let expenses = 0;
 
-  // Calculate totals for each period
-  const calculateTotals = (revenueList) => {
-    if (!revenueList || revenueList.length === 0) {
-      return { total: 0, added: 0, expenses: 0 };
+    if (revenueList && revenueList.length > 0) {
+      revenueTotal = revenueList.reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0);
+      revenueAdded = revenueList
+        .filter(rev => parseFloat(rev.amount || 0) > 0)
+        .reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0);
+      expenses = Math.abs(
+        revenueList
+          .filter(rev => parseFloat(rev.amount || 0) < 0)
+          .reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0)
+      );
     }
-    const total = revenueList.reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0);
-    const added = revenueList
-      .filter(rev => parseFloat(rev.amount || 0) > 0)
-      .reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0);
-    const expenses = Math.abs(
-      revenueList
-        .filter(rev => parseFloat(rev.amount || 0) < 0)
-        .reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0)
-    );
-    return { total, added, expenses };
+
+    // Add member payments to totals
+    const paymentsTotal = paymentList && paymentList.length > 0
+      ? paymentList.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0)
+      : 0;
+
+    return {
+      total: revenueTotal + paymentsTotal,
+      added: revenueAdded + paymentsTotal, // Member payments are added revenue
+      expenses
+    };
   };
 
-  // Calculate totals for each period
-  const daily = calculateTotals(dailyRevenues);
-  const weekly = calculateTotals(weeklyRevenues);
-  const monthly = calculateTotals(monthlyRevenues);
-  const yearly = calculateTotals(yearlyRevenues);
+  // Calculate totals for each period (including member payments)
+  const daily = calculateTotals(dailyRevenues, dailyPayments);
+  const weekly = calculateTotals(weeklyRevenues, weeklyPayments);
+  const monthly = calculateTotals(monthlyRevenues, monthlyPayments);
+  const yearly = calculateTotals(yearlyRevenues, yearlyPayments);
 
   // Set active period
   const setPeriod = (period) => setActivePeriod(period);

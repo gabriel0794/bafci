@@ -10,28 +10,70 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [memberPayments, setMemberPayments] = useState([]);
   
-  // Fetch revenue data based on time range
+  // Fetch revenue data and member payments based on time range
   useEffect(() => {
-    const fetchRevenueData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         const token = authService.getAuthToken();
-        const response = await fetch('http://localhost:5000/api/revenue', {
+        
+        // Fetch revenue data
+        const revenueResponse = await fetch('http://localhost:5000/api/revenue', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
 
-        if (!response.ok) {
+        if (!revenueResponse.ok) {
           throw new Error('Failed to fetch revenue data');
         }
 
-        const revenues = await response.json();
+        const revenues = await revenueResponse.json();
+
+        // Fetch member payments
+        const membersResponse = await fetch('http://localhost:5000/api/members', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'x-auth-token': token,
+          },
+        });
+
+        let allPayments = [];
+        if (membersResponse.ok) {
+          const members = await membersResponse.json();
+          
+          // Fetch payment history for each member
+          for (const member of members) {
+            try {
+              const paymentResponse = await fetch(
+                `http://localhost:5000/api/payments/history/${member.id}`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'x-auth-token': token,
+                  },
+                }
+              );
+
+              if (paymentResponse.ok) {
+                const payments = await paymentResponse.json();
+                allPayments.push(...payments);
+              }
+            } catch (error) {
+              console.error(`Error fetching payments for member ${member.id}:`, error);
+            }
+          }
+        }
+
+        setMemberPayments(allPayments);
         
-        // Process and format the data for the chart
-        const processedData = processRevenueData(revenues);
+        // Process and format the data for the chart (including member payments)
+        const processedData = processRevenueData(revenues, allPayments);
         setChartData(processedData);
         setError(null);
       } catch (err) {
@@ -43,12 +85,14 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       }
     };
 
-    fetchRevenueData();
+    fetchData();
   }, [timeRange]); // Re-fetch when time range changes
 
   // Process revenue data for the chart
-  const processRevenueData = (revenues) => {
-    if (!revenues || revenues.length === 0) return generateSampleData();
+  const processRevenueData = (revenues, payments = []) => {
+    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0)) {
+      return generateSampleData();
+    }
     
     // Process and group data by date
     const groupedData = {};
@@ -60,14 +104,27 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     // Ensure we have an entry for today
     groupedData[todayStr] = 0;
     
-    // Add actual data
-    revenues.forEach(item => {
-      const date = new Date(item.date).toLocaleDateString();
-      if (!groupedData[date]) {
-        groupedData[date] = 0;
-      }
-      groupedData[date] += parseFloat(item.amount);
-    });
+    // Add revenue entries
+    if (revenues && revenues.length > 0) {
+      revenues.forEach(item => {
+        const date = new Date(item.date).toLocaleDateString();
+        if (!groupedData[date]) {
+          groupedData[date] = 0;
+        }
+        groupedData[date] += parseFloat(item.amount);
+      });
+    }
+
+    // Add member payments
+    if (payments && payments.length > 0) {
+      payments.forEach(payment => {
+        const date = new Date(payment.payment_date).toLocaleDateString();
+        if (!groupedData[date]) {
+          groupedData[date] = 0;
+        }
+        groupedData[date] += parseFloat(payment.amount || 0);
+      });
+    }
 
     // Convert to arrays and sort in chronological order (oldest to newest)
     const sortedEntries = Object.entries(groupedData)
