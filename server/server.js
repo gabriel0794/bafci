@@ -13,6 +13,7 @@ import branchRoutes from './routes/branch.js';
 import memberRoutes from './routes/member.js';
 import fieldWorkerRoutes from './routes/fieldWorker.js';
 import paymentRoutes from './routes/payment.js';
+import programRoutes from './routes/program.js';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/field-workers', fieldWorkerRoutes);
+app.use('/api/programs', programRoutes);
 
 const PORT = process.env.PORT || 5000;
 

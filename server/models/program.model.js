@@ -1,13 +1,28 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/db.js';
 
-class Branch extends Model {}
+class Program extends Model {}
 
-Branch.init({
+Program.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
+  },
+  branchId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    field: 'branch_id',
+    references: {
+      model: 'branches',
+      key: 'id',
+    },
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
   },
   isActive: {
     type: DataTypes.BOOLEAN,
@@ -28,28 +43,23 @@ Branch.init({
   },
 }, {
   sequelize,
-  modelName: 'Branch',
-  tableName: 'branches',
+  modelName: 'Program',
+  tableName: 'programs',
   underscored: true,
   timestamps: true
 });
 
 // This will be called after all models are loaded
-Branch.associate = (models) => {
-  Branch.hasMany(models.FieldWorker, {
+Program.associate = (models) => {
+  Program.belongsTo(models.Branch, {
     foreignKey: 'branchId',
-    as: 'fieldWorkers'
+    as: 'branch'
   });
 
-  Branch.hasMany(models.Revenue, {
-    foreignKey: 'branchId',
-    as: 'revenues'
-  });
-
-  Branch.hasMany(models.Program, {
-    foreignKey: 'branchId',
-    as: 'programs'
+  Program.hasMany(models.ProgramAgeBracket, {
+    foreignKey: 'programId',
+    as: 'ageBrackets'
   });
 };
 
-export default Branch;
+export default Program;
