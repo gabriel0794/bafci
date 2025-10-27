@@ -786,39 +786,38 @@ const MembersPage = () => {
   const uniqueBranches = [...new Set(members.map(member => member.branch))].filter(Boolean);
   const ageBrackets = getAgeBrackets().map(bracket => bracket.range);
 
-
-return (
-  <div className="min-h-screen bg-gray-50">
-    <CustomAlert
-      open={alert.open}
-      onClose={handleAlertClose}
-      title={alert.title}
-      message={alert.message}
-      severity={alert.severity}
-    />
-    <Navbar activePage="members" />
-    <div className="py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Members Management</h1>
-          <p className="mt-1 text-sm text-gray-500">Add and manage members</p>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-8">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-medium text-gray-900">Members List</h2>
-                <button
-                  onClick={handleOpen}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  + Add Member
-                </button>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <CustomAlert
+        open={alert.open}
+        onClose={handleAlertClose}
+        title={alert.title}
+        message={alert.message}
+        severity={alert.severity}
+      />
+      <Navbar activePage="members" />
+      <div className="py-6 px-2 sm:px-4">
+        <div className="max-w-[99%] mx-auto">
+          <div className="mb-6 px-2 sm:px-4">
+            <h1 className="text-2xl font-bold text-gray-900">Members Management</h1>
+            <p className="mt-1 text-sm text-gray-500">Add and manage members</p>
+          </div>
+          
+          <div className="w-full">
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-lg font-medium text-gray-900">Members List</h2>
+                  <button
+                    onClick={handleOpen}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 whitespace-nowrap"
+                  >
+                    + Add Member
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-6">
-              <div className="mb-4 space-y-4">
+              <div className="p-3 sm:p-4">
+                <div className="mb-4 space-y-4">
                 {/* Search Bar */}
                 <div className="relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1950,7 +1949,6 @@ return (
         </div>
       )}
     </div>
-  )
   </div>
   )
 };

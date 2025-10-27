@@ -289,14 +289,14 @@ const RevenuePage = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar activePage="revenue" />
 
-      <div className="py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Revenue Management</h1>
-        <p className="mt-1 text-sm text-gray-500">Add and manage revenue entries</p>
-      </div>
+      <div className="py-6 px-2 sm:px-4">
+        <div className="max-w-[99%] mx-auto">
+          <div className="mb-6 px-2 sm:px-4">
+            <h1 className="text-2xl font-bold text-gray-900">Revenue Management</h1>
+            <p className="mt-1 text-sm text-gray-500">Add and manage revenue entries</p>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Add Revenue Form */}
         <div className="lg:col-span-1">
           <div className="bg-white shadow rounded-lg p-6">

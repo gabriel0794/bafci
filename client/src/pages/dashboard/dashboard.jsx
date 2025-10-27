@@ -48,10 +48,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <Navbar activePage="dashboard" />
 
-
-      <div className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <header className="mb-6">
+      <div className="py-6 px-2 sm:px-4">
+        <div className="max-w-[99%] mx-auto">
+          <header className="mb-6 px-2 sm:px-4">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Welcome back, {userData?.name}!
             </h1>
@@ -60,16 +59,16 @@ export default function Dashboard() {
             </p>
           </header>
 
-          <main className="space-y-6">
+          <main className="space-y-4 sm:space-y-6">
             {/* Revenue Summary and Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col h-[330px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex flex-col h-[330px]">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Overview</h2>
                 <div className="flex-1">
                   <RevenueSummary />
                 </div>
               </div>
-              <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col h-[330px]">
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex flex-col h-[330px]">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Chart</h2>
                 <div className="flex-1 min-h-0">
                   <RevenueChart 
@@ -81,12 +80,12 @@ export default function Dashboard() {
             </div>
             
             {/* Members List */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <MembersList />
             </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
     </div>
   );
 };

@@ -437,15 +437,16 @@ const PaymentsPage = () => {
         message={alert.message} 
         severity={alert.severity} 
       />
-      <div className="py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="p-6">
-            <Typography variant="h6" className="mb-4">Member Payments</Typography>
+      <div className="py-6 px-2 sm:px-4">
+        <div className="max-w-[99%] mx-auto">
+          <div className="mb-6 px-2 sm:px-4">
+            <h1 className="text-2xl font-bold text-gray-900">Members Payment</h1>
+            <p className="mt-1 text-sm text-gray-500">Manage payments for members</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Unpaid Members Column */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="bg-red-100 p-4 border-b border-red-200">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-red-800">Unpaid Members ({unpaidMembers.length})</h2>
