@@ -123,13 +123,93 @@ Member.init({
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   },
-  branch: DataTypes.STRING
+  branch: DataTypes.STRING,
+  membershipFeePaid: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    field: 'membership_fee_paid'
+  },
+  membershipFeeAmount: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 600,
+    field: 'membership_fee_amount'
+  },
+  membershipFeePaidDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'membership_fee_paid_date'
+  },
+  lastContributionDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'last_contribution_date'
+  },
+  nextDueDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'next_due_date'
+  }
 }, {
   sequelize,
   modelName: 'Member',
   tableName: 'members',
   timestamps: true,
-  underscored: true
+  underscored: true,
+  hooks: {
+    // After creating a new member, increment the field worker's member count
+    afterCreate: async (member, options) => {
+      if (member.fieldWorkerId) {
+        const FieldWorker = sequelize.models.FieldWorker;
+        await FieldWorker.increment('memberCount', {
+          by: 1,
+          where: { id: member.fieldWorkerId },
+          transaction: options.transaction
+        });
+      }
+    },
+    
+    // After updating a member, adjust member counts if field worker changed
+    afterUpdate: async (member, options) => {
+      // Check if fieldWorkerId was changed
+      if (member.changed('fieldWorkerId')) {
+        const FieldWorker = sequelize.models.FieldWorker;
+        const previousFieldWorkerId = member._previousDataValues.fieldWorkerId;
+        const newFieldWorkerId = member.fieldWorkerId;
+        
+        // Decrement count for previous field worker
+        if (previousFieldWorkerId) {
+          await FieldWorker.decrement('memberCount', {
+            by: 1,
+            where: { id: previousFieldWorkerId },
+            transaction: options.transaction
+          });
+        }
+        
+        // Increment count for new field worker
+        if (newFieldWorkerId) {
+          await FieldWorker.increment('memberCount', {
+            by: 1,
+            where: { id: newFieldWorkerId },
+            transaction: options.transaction
+          });
+        }
+      }
+    },
+    
+    // After deleting a member, decrement the field worker's member count
+    afterDestroy: async (member, options) => {
+      if (member.fieldWorkerId) {
+        const FieldWorker = sequelize.models.FieldWorker;
+        await FieldWorker.decrement('memberCount', {
+          by: 1,
+          where: { id: member.fieldWorkerId },
+          transaction: options.transaction
+        });
+      }
+    }
+  }
 });
 
 // This will be called after all models are loaded

@@ -22,6 +22,7 @@ const MembersPage = () => {
   });
   const [branches, setBranches] = useState([]);
   const [fieldWorkers, setFieldWorkers] = useState([]); 
+  const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -94,79 +95,90 @@ const MembersPage = () => {
     }
   };
 
-  // Program data
-  const programData = {
-    JACINTH: {
-      name: 'JACINTH',
-      ageBrackets: [
-        { range: '18 - 25', amount: 55, availment: '3 mons & 1 day' },
-        { range: '26 - 30', amount: 75, availment: '4 mons & 1 day' },
-        { range: '31 - 35', amount: 97, availment: '5 mons & 1 day' },
-        { range: '36 - 40', amount: 115, availment: '6 mons & 1 day' },
-        { range: '41 - 45', amount: 120, availment: '7 mons & 1 day' },
-        { range: '46 - 50', amount: 135, availment: '8 mons & 1 day' },
-        { range: '51 - 55', amount: 145, availment: '9 mons & 1 day' },
-        { range: '56 - 60', amount: 160, availment: '10 mons & 1 day' },
-        { range: '61 - 65', amount: 185, availment: '12 mons & 1 day' },
-        { range: '66 - 70', amount: 195, availment: '14 mons & 1 day' },
-        { range: '71 - 75', amount: 210, availment: '16 mons & 1 day' },
-        { range: '76 - 80', amount: 235, availment: '18 mons & 1 day' },
-        { range: '81 - 85', amount: 260, availment: '24 mons & 1 day' },
-        { range: '86 - 90', amount: 285, availment: '24 mons & 1 day' },
-        { range: '91 - 95', amount: 350, availment: '24 mons & 1 day' },
-        { range: '96 - 101 UP', amount: 395, availment: '24 mons & 1 day' }
-      ]
-    },
-    CHALCEDONY: {
-      name: 'CHALCEDONY',
-      ageBrackets: [
-        { range: '18 - 25', amount: 80, availment: '3 mons & 1 day' },
-        { range: '26 - 30', amount: 105, availment: '4 mons & 1 day' },
-        { range: '31 - 35', amount: 130, availment: '5 mons & 1 day' },
-        { range: '36 - 40', amount: 145, availment: '6 mons & 1 day' },
-        { range: '41 - 45', amount: 150, availment: '7 mons & 1 day' },
-        { range: '46 - 50', amount: 165, availment: '8 mons & 1 day' },
-        { range: '51 - 55', amount: 180, availment: '9 mons & 1 day' },
-        { range: '56 - 60', amount: 195, availment: '10 mons & 1 day' },
-        { range: '61 - 65', amount: 225, availment: '12 mons & 1 day' },
-        { range: '66 - 70', amount: 240, availment: '14 mons & 1 day' },
-        { range: '71 - 75', amount: 265, availment: '16 mons & 1 day' },
-        { range: '76 - 80', amount: 290, availment: '18 mons & 1 day' },
-        { range: '81 - 85', amount: 325, availment: '24 mons & 1 day' },
-        { range: '86 - 90', amount: 360, availment: '24 mons & 1 day' },
-        { range: '91 - 95', amount: 415, availment: '24 mons & 1 day' },
-        { range: '96 - 101 UP', amount: 450, availment: '24 mons & 1 day' }
-      ]
+  // Fetch programs based on selected branch
+  const fetchProgramsByBranch = async (branchName) => {
+    if (!branchName) {
+      setPrograms([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/programs/branch/name/${encodeURIComponent(branchName)}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPrograms(data);
+      } else {
+        console.error('Failed to fetch programs for branch');
+        setPrograms([]);
+      }
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+      setPrograms([]);
     }
   };
 
-  const programOptions = ['JACINTH', 'CHALCEDONY'];
-
-  // Get age brackets for all programs
+  // Get age brackets for selected program, sorted by minAge
   const getAgeBrackets = () => {
-    const allBrackets = Object.values(programData).flatMap(program => program.ageBrackets);
-    const uniqueBrackets = Array.from(new Set(allBrackets.map(b => b.range)))
-      .map(range => {
-        return allBrackets.find(b => b.range === range);
-      });
-    return uniqueBrackets;
+    if (!currentMember.program) return [];
+    
+    const selectedProgram = programs.find(p => p.name === currentMember.program);
+    if (selectedProgram && selectedProgram.ageBrackets) {
+      // Create a copy of the array and sort by minAge
+      return [...selectedProgram.ageBrackets]
+        .sort((a, b) => a.minAge - b.minAge)
+        .map(bracket => ({
+          range: bracket.ageRange,
+          amount: parseFloat(bracket.contributionAmount),
+          availment: bracket.availmentPeriod,
+          minAge: bracket.minAge  // Keep minAge for sorting
+        }));
+    }
+    return [];
+  };
+
+  // Handle branch change
+  const handleBranchChange = async (e) => {
+    const branchName = e.target.value;
+    setCurrentMember(prev => ({
+      ...prev,
+      branch: branchName,
+      program: '',
+      age_bracket: '',
+      contribution_amount: '',
+      availment_period: ''
+    }));
+    
+    // Fetch programs for the selected branch
+    await fetchProgramsByBranch(branchName);
   };
 
   // Handle program change
   const handleProgramChange = (e) => {
-    const program = e.target.value;
-    const ageBrackets = programData[program] ? programData[program].ageBrackets : [];
-    const defaultBracket = ageBrackets.length > 0 ? ageBrackets[0].range : '';
-    const defaultAmount = ageBrackets.length > 0 ? ageBrackets[0].amount : '';
-    const defaultAvailment = ageBrackets.length > 0 ? ageBrackets[0].availment : '';
-
-    setCurrentMember(prev => ({
-      ...prev,
-      program,
-      age_bracket: defaultBracket,
-      contribution_amount: defaultAmount,
-      availment_period: defaultAvailment
-    }));
+    const programName = e.target.value;
+    const selectedProgram = programs.find(p => p.name === programName);
+    
+    if (selectedProgram && selectedProgram.ageBrackets && selectedProgram.ageBrackets.length > 0) {
+      const firstBracket = selectedProgram.ageBrackets[0];
+      setCurrentMember(prev => ({
+        ...prev,
+        program: programName,
+        age_bracket: firstBracket.ageRange,
+        contribution_amount: parseFloat(firstBracket.contributionAmount),
+        availment_period: firstBracket.availmentPeriod
+      }));
+    } else {
+      setCurrentMember(prev => ({
+        ...prev,
+        program: programName,
+        age_bracket: '',
+        contribution_amount: '',
+        availment_period: ''
+      }));
+    }
   };
 
   // Fetch payment period data for all members
@@ -1184,7 +1196,7 @@ const MembersPage = () => {
                                 <Select
                                   name="branch"
                                   value={currentMember.branch || ''}
-                                  onChange={handleChange}
+                                  onChange={handleBranchChange}
                                   displayEmpty
                                   inputProps={{ 'aria-label': 'Select Branch' }}
                                   sx={{
@@ -1227,7 +1239,7 @@ const MembersPage = () => {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Program *
                               </label>
-                              <FormControl fullWidth size="small" required>
+                              <FormControl fullWidth size="small" required disabled={!currentMember.branch}>
                                 <Select
                                   name="program"
                                   value={currentMember.program || ''}
@@ -1239,26 +1251,31 @@ const MembersPage = () => {
                                       borderColor: '#d1d5db',
                                     },
                                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                                      borderColor: '#10b981',
+                                      borderColor: currentMember.branch ? '#10b981' : '#d1d5db',
                                     },
                                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                      borderColor: '#10b981',
+                                      borderColor: currentMember.branch ? '#10b981' : '#d1d5db',
                                       borderWidth: '2px',
                                     },
                                     '& .MuiSelect-icon': {
                                       color: '#6b7280',
                                     },
-                                    backgroundColor: 'white',
+                                    backgroundColor: currentMember.branch ? 'white' : '#f9fafb',
+                                    color: !currentMember.branch ? '#9ca3af' : 'inherit',
                                     borderRadius: '0.375rem',
                                     fontSize: '0.875rem',
                                   }}
                                 >
                                   <MenuItem value="">
-                                    <em>Select Program...</em>
+                                    <em>{currentMember.branch ? 'Select Program...' : 'Select Branch First...'}</em>
                                   </MenuItem>
-                                  {programOptions.map((option) => (
-                                    <MenuItem key={option} value={option}>
-                                      {option}
+                                  {programs.map((program) => (
+                                    <MenuItem 
+                                      key={program.id} 
+                                      value={program.name}
+                                      disabled={!program.isActive}
+                                    >
+                                      {program.name}
                                     </MenuItem>
                                   ))}
                                 </Select>
@@ -1632,6 +1649,21 @@ const MembersPage = () => {
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Amount Paid (Php)
+                              </label>
+                              <input
+                                type="number"
+                                name="membership_fee_amount"
+                                value={currentMember.membership_fee_amount || ''}
+                                onChange={handleChange}
+                                min="0"
+                                step="1"
+                                placeholder="600"
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-2 py-2"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Received By
                               </label>
                               <input
@@ -1907,8 +1939,8 @@ const MembersPage = () => {
                           <div><span className="font-medium">O.R. Number:</span> {viewMember.or_number || 'N/A'}</div>
                           <div><span className="font-medium">Received By:</span> {viewMember.received_by || 'N/A'}</div>
                           <div><span className="font-medium">Field Worker:</span> {viewMember.field_worker?.name || 'N/A'}</div>
-                          <div><span className="font-medium">Last Contribution:</span> {viewMember.last_contribution_date ? new Date(viewMember.last_contribution_date).toLocaleDateString() : '--'}</div>
-                          <div><span className="font-medium">Next Due Date:</span> {viewMember.next_due_date ? new Date(viewMember.next_due_date).toLocaleDateString() : '--'}</div>
+                          <div><span className="font-medium">Membership Fee Amount:</span> {viewMember.membership_fee_amount ? `${viewMember.membership_fee_amount} PHP` : 'N/A'}</div>
+                          <div><span className="font-medium">Membership Date Paid:</span> {viewMember.date_paid ? new Date(viewMember.date_paid).toLocaleDateString() : '--'}</div>
                         </div>
                       </div>
                     </div>
