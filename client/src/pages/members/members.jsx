@@ -29,8 +29,9 @@ const MembersPage = () => {
   const [previewUrl, setPreviewUrl] = useState('');
   const [viewOpen, setViewOpen] = useState(false);
   const [viewMember, setViewMember] = useState(null);
-  
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
+  const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
 
   // Fullscreen image viewer state
   const [fullscreenImage, setFullscreenImage] = useState(null);
@@ -43,6 +44,52 @@ const MembersPage = () => {
     message: '',
     severity: 'info' // 'success', 'error', 'warning', 'info'
   });
+
+  const STATUS_OPTIONS = ['Alive', 'Deceased', 'Void', 'Kicked'];
+
+  const getStatusBadgeClasses = (status) => {
+    switch (status) {
+      case 'Deceased':
+        return 'bg-red-100 text-red-700';
+      case 'Void':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'Kicked':
+        return 'bg-gray-200 text-gray-700';
+      default:
+        return 'bg-green-100 text-green-700';
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionMenuOpenId !== null && !event.target.closest('.member-actions-menu')) {
+        setActionMenuOpenId(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [actionMenuOpenId]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setActionMenuOpenId(null);
+  }, [searchTerm, filters.ageBracket, filters.program, filters.branch, filters.endorsedBy, members.length]);
+
+  useEffect(() => {
+    const totalPages = filteredMembers.length > 0 ? Math.ceil(filteredMembers.length / itemsPerPage) : 0;
+
+    if (totalPages === 0) {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      }
+      return;
+    }
+
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [filteredMembers.length, itemsPerPage, currentPage]);
 
   const initialMemberState = {
     application_number: '',
@@ -76,7 +123,8 @@ const MembersPage = () => {
     received_by: '',
     or_number: '',
     branch: '',
-    fieldWorkerId: ''
+    fieldWorkerId: '',
+    status: 'Alive'
   };
 
   const [currentMember, setCurrentMember] = useState(initialMemberState);
@@ -456,7 +504,8 @@ const MembersPage = () => {
       received_by: '',
       or_number: '',
       endorsed_by: '',
-      branch: ''
+      branch: '',
+      status: 'Alive'
     });
   };
 
@@ -561,6 +610,45 @@ const MembersPage = () => {
   const handleDelete = (applicationNumber) => {
     // TODO: Add confirmation dialog
     setMembers(members.filter(m => m.applicationNumber !== applicationNumber));
+  };
+
+  const handleStatusChange = async (member, status) => {
+    setActionMenuOpenId(null);
+
+    try {
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const formData = new FormData();
+      formData.append('status', status);
+
+      const response = await fetch(`http://localhost:5000/api/members/${member.id}`, {
+        method: 'PUT',
+        headers: {
+          'x-auth-token': token
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update status');
+      }
+
+      await fetchMembers();
+
+      showAlert(
+        'Status Updated',
+        `${member.full_name || 'Member'} marked as ${status}.`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error updating member status:', error);
+      showAlert('Update Error', error.message || 'Failed to update status. Please try again.', 'error');
+    }
   };
 
   const handleMemberClick = (member) => {
@@ -798,6 +886,21 @@ const MembersPage = () => {
   const uniqueBranches = [...new Set(members.map(member => member.branch))].filter(Boolean);
   const ageBrackets = getAgeBrackets().map(bracket => bracket.range);
 
+  const totalMembers = members.length;
+  const filteredCount = filteredMembers.length;
+  const startIndex = filteredCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = filteredCount === 0 ? 0 : Math.min(currentPage * itemsPerPage, filteredCount);
+  const totalPages = filteredCount > 0 ? Math.ceil(filteredCount / itemsPerPage) : 0;
+  const paginationWindow = 5;
+  const paginationStart = totalPages === 0 ? 0 : Math.max(0, Math.min(currentPage - 3, totalPages - paginationWindow));
+  const paginationEnd = totalPages === 0 ? 0 : Math.min(totalPages, paginationStart + paginationWindow);
+  const pageNumbers = totalPages === 0 ? [] : Array.from({ length: totalPages }, (_, i) => i + 1).slice(paginationStart, paginationEnd);
+  const isFirstPage = currentPage <= 1;
+  const isLastPage = totalPages === 0 || currentPage >= totalPages;
+  const paginationSummary = filteredCount === 0
+    ? 'No members to display'
+    : `Showing ${startIndex}-${endIndex} of ${filteredCount} member${filteredCount !== 1 ? 's' : ''}${filteredCount !== totalMembers ? ` (filtered from ${totalMembers})` : ''}`;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <CustomAlert
@@ -941,6 +1044,36 @@ const MembersPage = () => {
                   </div>
                 </div>
               </div>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 px-2">
+                <div className="text-sm text-gray-600">
+                  {paginationSummary}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={isFirstPage}
+                    className={`px-3 py-1 rounded-md ${isFirstPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    Previous
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-md ${currentPage === page ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={isLastPage}
+                    className={`px-3 py-1 rounded-md ${isLastPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
               <div className="relative overflow-x-auto w-full">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -953,6 +1086,8 @@ const MembersPage = () => {
                       <col className="w-1/6" />
                       <col className="w-1/6" />
                       <col className="w-1/6" />
+                      <col className="w-1/6" />
+                      <col className="w-12" />
                     </colgroup>
                     <thead className="bg-gray-50">
                       <tr>
@@ -975,30 +1110,38 @@ const MembersPage = () => {
                           Branch
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Period Start
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Next Due Date
+                        </th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {loading ? (
                         <tr>
-                          <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                          <td colSpan="10" className="px-6 py-4 text-center text-sm text-gray-500">
                             Loading members...
                           </td>
                         </tr>
                       ) : filteredMembers.length === 0 ? (
                         <tr>
-                          <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                          <td colSpan="10" className="px-6 py-4 text-center text-sm text-gray-500">
                             {searchTerm || Object.values(filters).some(Boolean) 
                               ? 'No members match your search criteria. Try different filters.' 
                               : 'No members found. Click "Add Member" to create one.'}
                           </td>
                         </tr>
                       ) : (
-                        filteredMembers.map((member) => (
+                        filteredMembers
+                          .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                          .map((member) => (
                           <tr 
                             key={member.id} 
                             className="group hover:bg-gray-50 w-full cursor-pointer transition-colors"
@@ -1049,17 +1192,86 @@ const MembersPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {member.branch || 'N/A'}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClasses(member.status)}`}>
+                                {member.status || 'Alive'}
+                              </span>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {periodData[member.id]?.period_start ? new Date(periodData[member.id].period_start).toLocaleDateString() : '--'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {periodData[member.id]?.next_payment ? new Date(periodData[member.id].next_payment).toLocaleDateString() : '--'}
                             </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="relative member-actions-menu inline-block text-left">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionMenuOpenId(prev => prev === member.id ? null : member.id);
+                                  }}
+                                  className="rounded-full p-1 hover:bg-gray-100 text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                >
+                                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 11.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 17a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                                  </svg>
+                                </button>
+                                {actionMenuOpenId === member.id && (
+                                  <div className="absolute right-0 z-20 mt-2 w-40 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <div className="py-1">
+                                      {STATUS_OPTIONS.filter(option => option !== member.status).map((status) => (
+                                        <button
+                                          key={status}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleStatusChange(member, status);
+                                          }}
+                                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                          {status}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4 px-2">
+                <div className="text-sm text-gray-600">
+                  {paginationSummary}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={isFirstPage}
+                    className={`px-3 py-1 rounded-md ${isFirstPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    Previous
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-md ${currentPage === page ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={isLastPage}
+                    className={`px-3 py-1 rounded-md ${isLastPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             </div>

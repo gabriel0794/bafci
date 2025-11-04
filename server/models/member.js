@@ -123,6 +123,11 @@ Member.init({
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   },
+  status: {
+    type: DataTypes.ENUM('Alive', 'Deceased', 'Void', 'Kicked'),
+    allowNull: false,
+    defaultValue: 'Alive'
+  },
   branch: DataTypes.STRING,
   membershipFeePaid: {
     type: DataTypes.BOOLEAN,
