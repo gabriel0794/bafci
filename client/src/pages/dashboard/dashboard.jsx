@@ -79,9 +79,11 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* Members List */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <MembersList />
+            {/* Members List - 50% width to allow space for another component */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <MembersList />
+              </div>
             </div>
           </main>
         </div>

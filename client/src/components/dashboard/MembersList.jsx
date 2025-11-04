@@ -3,6 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog } from '@headlessui/react';
 import html2pdf from 'html2pdf.js';
 
+// Format date as MM/DD/YYYY
+const formatDate = (dateString) => {
+  if (!dateString) return '--';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '--';
+  
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  
+  return `${month}/${day}/${year}`;
+};
+
 // Print-specific styles to handle color compatibility
 const printStyles = `
   @media print {
@@ -26,14 +39,10 @@ export default function MembersList() {
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    program: '',
-    branch: '',
-    endorsedBy: ''
-  });
   const [loading, setLoading] = useState(true);
   const [viewOpen, setViewOpen] = useState(false);
   const [viewMember, setViewMember] = useState(null);
+  const [newMembersToday, setNewMembersToday] = useState(0);
   const navigate = useNavigate();
 
   // View member dialog handlers
@@ -54,7 +63,8 @@ export default function MembersList() {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const membersRes = await fetch('http://localhost:5000/api/members?limit=5', { // Limit to 5 most recent members
+        // Fetch recent 5 members for the list
+        const membersRes = await fetch('http://localhost:5000/api/members?limit=5', {
           headers: { 
             'x-auth-token': token,
             'Content-Type': 'application/json'
@@ -65,6 +75,28 @@ export default function MembersList() {
 
         setMembers(membersData);
         setFilteredMembers(membersData);
+
+        // Fetch all members to calculate today's count
+        const allMembersRes = await fetch('http://localhost:5000/api/members', {
+          headers: { 
+            'x-auth-token': token,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const allMembersData = await allMembersRes.json();
+        
+        // Calculate members added today (comparing only the date part, ignoring time)
+        const today = new Date();
+        const todayDateString = today.toDateString();
+        
+        const todayCount = allMembersData.filter(member => {
+          if (!member.date_applied) return false;
+          const appliedDate = new Date(member.date_applied);
+          return appliedDate.toDateString() === todayDateString;
+        }).length;
+        
+        setNewMembersToday(todayCount);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -75,7 +107,7 @@ export default function MembersList() {
     fetchData();
   }, []);
 
-  // Filter members based on search and filters
+  // Filter members based on search
   useEffect(() => {
     let result = [...members];
     
@@ -83,40 +115,14 @@ export default function MembersList() {
       const lowercasedFilter = searchTerm.toLowerCase();
       result = result.filter(member => 
         (member.full_name?.toLowerCase().includes(lowercasedFilter)) ||
-        (member.program?.toLowerCase().includes(lowercasedFilter)) ||
-        (member.branch?.toLowerCase().includes(lowercasedFilter))
+        (member.program?.toLowerCase().includes(lowercasedFilter))
       );
     }
     
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
-        result = result.filter(member => {
-          if (key === 'endorsedBy') {
-            return member.field_worker?.name?.toLowerCase() === value.toLowerCase();
-          }
-          return member[key]?.toLowerCase() === value.toLowerCase();
-        });
-      }
-    });
-    
     setFilteredMembers(result);
-  }, [searchTerm, members, filters]);
+  }, [searchTerm, members]);
 
-  const handleFilterChange = (filterName, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterName]: value
-    }));
-  };
 
-  const clearFilters = () => {
-    setFilters({
-      program: '',
-      branch: '',
-      endorsedBy: ''
-    });
-    setSearchTerm('');
-  };
 
   const handleMemberClick = (member) => {
     handleViewOpen(member);
@@ -346,10 +352,7 @@ export default function MembersList() {
     }
   };
 
-  // Get unique values for filters
-  const uniquePrograms = [...new Set(members.map(member => member.program))].filter(Boolean);
-  const uniqueBranches = [...new Set(members.map(member => member.branch))].filter(Boolean);
-  const uniqueEndorsedBy = [...new Set(members.map(member => member.field_worker?.name))].filter(Boolean);
+
   
   return (
     <div className="px-6 py-6">
@@ -491,8 +494,8 @@ export default function MembersList() {
                           <div><span className="font-medium">O.R. Number:</span> {viewMember.or_number || 'N/A'}</div>
                           <div><span className="font-medium">Received By:</span> {viewMember.received_by || 'N/A'}</div>
                           <div><span className="font-medium">Field Worker:</span> {viewMember.field_worker?.name || 'N/A'}</div>
-                          <div><span className="font-medium">Last Contribution:</span> {viewMember.last_contribution_date ? formatDate(viewMember.last_contribution_date) : '--'}</div>
-                          <div><span className="font-medium">Next Due Date:</span> {viewMember.next_due_date ? formatDate(viewMember.next_due_date) : '--'}</div>
+                          <div><span className="font-medium">Membership Fee Amount:</span> {viewMember.membership_fee_amount ? `${viewMember.membership_fee_amount} PHP` : 'N/A'}</div>
+                          <div><span className="font-medium">Membership Date Paid:</span> {formatDate(viewMember.date_paid)}</div>
                         </div>
                       </div>
                     </div>
@@ -526,7 +529,7 @@ export default function MembersList() {
         </button>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search and New Members Count */}
       <div className="mb-6 space-y-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -537,87 +540,44 @@ export default function MembersList() {
           <input
             type="text"
             className="block w-full pl-10 pr-24 py-2.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
-            placeholder="Search by name, program, or branch"
+            placeholder="Search by name or program"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {(searchTerm || Object.values(filters).some(Boolean)) && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2">
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                  title="Clear search"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              {Object.values(filters).some(Boolean) && (
-                <button
-                  onClick={clearFilters}
-                  className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-                  title="Clear all filters"
-                >
-                  Clear Filters
-                </button>
-              )}
+          {searchTerm && (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+              <button
+                onClick={() => setSearchTerm('')}
+                className="text-gray-400 hover:text-gray-600 p-1"
+                title="Clear search"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           )}
         </div>
         
-        {/* Filter Dropdowns */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Program Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Program</label>
-            <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm py-2 px-3 border"
-              value={filters.program}
-              onChange={(e) => handleFilterChange('program', e.target.value)}
-            >
-              <option value="">All Programs</option>
-              {uniquePrograms.map((program) => (
-                <option key={program} value={program}>
-                  {program}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Branch Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Branch</label>
-            <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm py-2 px-3 border"
-              value={filters.branch}
-              onChange={(e) => handleFilterChange('branch', e.target.value)}
-            >
-              <option value="">All Branches</option>
-              {uniqueBranches.map((branch) => (
-                <option key={branch} value={branch}>
-                  {branch}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Endorsed By Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Endorsed By</label>
-            <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm py-2 px-3 border"
-              value={filters.endorsedBy}
-              onChange={(e) => handleFilterChange('endorsedBy', e.target.value)}
-            >
-              <option value="">All Field Workers</option>
-              {uniqueEndorsedBy.map((worker) => (
-                <option key={worker} value={worker}>
-                  {worker}
-                </option>
-              ))}
-            </select>
+        {/* New Members Today Count */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">New Members Today</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {newMembersToday}
+                </p>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">
+              Resets at midnight
+            </div>
           </div>
         </div>
       </div>
@@ -630,26 +590,14 @@ export default function MembersList() {
                 Name
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contact
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date Applied
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Program
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Endorsed By
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Branch
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center">
+                <td colSpan="2" className="px-6 py-4 text-center">
                   <div className="flex justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
                   </div>
@@ -657,7 +605,7 @@ export default function MembersList() {
               </tr>
             ) : filteredMembers.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan="2" className="px-6 py-4 text-center text-sm text-gray-500">
                   No members found
                 </td>
               </tr>
@@ -690,12 +638,6 @@ export default function MembersList() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div>{member.contact_number || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(member.date_applied)}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       member.program?.toLowerCase() === 'jacinth' 
@@ -706,12 +648,6 @@ export default function MembersList() {
                     }`}>
                       {member.program || 'N/A'}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {member.field_worker?.name || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {member.branch || 'N/A'}
                   </td>
                 </tr>
               ))

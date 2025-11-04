@@ -37,6 +37,42 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
+// Helper function to normalize date fields for UTC+8 timezone (Philippines/Singapore)
+// This ensures dates are stored correctly without timezone conversion issues
+const normalizeDateForUTC8 = (dateString) => {
+  if (!dateString) return dateString;
+  
+  // If it's already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+  
+  // Parse the date and ensure it's interpreted in UTC+8
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  
+  // Get the date components in UTC+8
+  const utc8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+  const year = utc8Date.getUTCFullYear();
+  const month = String(utc8Date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(utc8Date.getUTCDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to normalize date fields in member data
+const normalizeMemberDates = (memberData) => {
+  const dateFields = ['dateApplied', 'dateOfBirth', 'spouseDob', 'beneficiaryDob', 'datePaid'];
+  
+  dateFields.forEach(field => {
+    if (memberData[field]) {
+      memberData[field] = normalizeDateForUTC8(memberData[field]);
+    }
+  });
+  
+  return memberData;
+};
+
 // Create a new member
 router.post('/', auth, upload.single('picture'), async (req, res) => {
   try {
@@ -44,7 +80,10 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
     const userId = req.user.id;
     
     // Create member with the data from the request body
-    const memberData = toCamelCase(req.body);
+    let memberData = toCamelCase(req.body);
+    
+    // Normalize date fields for UTC+8 timezone
+    memberData = normalizeMemberDates(memberData);
 
     // If a picture is uploaded, add its filename to the data
     if (req.file) {
@@ -154,12 +193,15 @@ router.put('/:id', auth, upload.single('picture'), async (req, res) => {
 
     // Filter out null or empty string values from req.body
     const incomingData = toCamelCase(req.body);
-    const memberData = {};
+    let memberData = {};
     for (const key in incomingData) {
       if (incomingData[key] !== null && incomingData[key] !== '') {
         memberData[key] = incomingData[key];
       }
     }
+    
+    // Normalize date fields for UTC+8 timezone
+    memberData = normalizeMemberDates(memberData);
 
     // If a new picture is uploaded, add its filename to the data
     if (req.file) {
