@@ -9,6 +9,9 @@ import {
 import CustomAlert from '../../components/common/CustomAlert';
 import Navbar from '../../components/Navbar';
 
+const SPECIAL_STATUSES = ['Deceased', 'Void', 'Kicked'];
+const STATUS_VIEW_OPTIONS = ['Active', ...SPECIAL_STATUSES];
+
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
@@ -30,6 +33,7 @@ const MembersPage = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewMember, setViewMember] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusView, setStatusView] = useState('Active');
   const [itemsPerPage] = useState(15);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
 
@@ -46,19 +50,6 @@ const MembersPage = () => {
   });
 
   const STATUS_OPTIONS = ['Alive', 'Deceased', 'Void', 'Kicked'];
-
-  const getStatusBadgeClasses = (status) => {
-    switch (status) {
-      case 'Deceased':
-        return 'bg-red-100 text-red-700';
-      case 'Void':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'Kicked':
-        return 'bg-gray-200 text-gray-700';
-      default:
-        return 'bg-green-100 text-green-700';
-    }
-  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -77,7 +68,15 @@ const MembersPage = () => {
   }, [searchTerm, filters.ageBracket, filters.program, filters.branch, filters.endorsedBy, members.length]);
 
   useEffect(() => {
-    const totalPages = filteredMembers.length > 0 ? Math.ceil(filteredMembers.length / itemsPerPage) : 0;
+    const relevantMembers = filteredMembers.filter(member => {
+      const status = member.status || 'Alive';
+      if (statusView === 'Active') {
+        return !SPECIAL_STATUSES.includes(status);
+      }
+      return status === statusView;
+    });
+
+    const totalPages = relevantMembers.length > 0 ? Math.ceil(relevantMembers.length / itemsPerPage) : 0;
 
     if (totalPages === 0) {
       if (currentPage !== 1) {
@@ -89,7 +88,7 @@ const MembersPage = () => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
-  }, [filteredMembers.length, itemsPerPage, currentPage]);
+  }, [filteredMembers, itemsPerPage, currentPage, statusView]);
 
   const initialMemberState = {
     application_number: '',
@@ -417,6 +416,12 @@ const MembersPage = () => {
       endorsedBy: ''
     });
     setSearchTerm('');
+  };
+
+  const handleStatusViewChange = (view) => {
+    setStatusView(view);
+    setCurrentPage(1);
+    setActionMenuOpenId(null);
   };
 
   // Fetch members from API
@@ -886,8 +891,32 @@ const MembersPage = () => {
   const uniqueBranches = [...new Set(members.map(member => member.branch))].filter(Boolean);
   const ageBrackets = getAgeBrackets().map(bracket => bracket.range);
 
-  const totalMembers = members.length;
-  const filteredCount = filteredMembers.length;
+  const statusFilteredMembers = {
+    Active: filteredMembers.filter(member => !SPECIAL_STATUSES.includes(member.status || 'Alive')),
+    Deceased: filteredMembers.filter(member => (member.status || 'Alive') === 'Deceased'),
+    Void: filteredMembers.filter(member => (member.status || 'Alive') === 'Void'),
+    Kicked: filteredMembers.filter(member => (member.status || 'Alive') === 'Kicked')
+  };
+
+  const statusAllMembers = {
+    Active: members.filter(member => !SPECIAL_STATUSES.includes(member.status || 'Alive')),
+    Deceased: members.filter(member => (member.status || 'Alive') === 'Deceased'),
+    Void: members.filter(member => (member.status || 'Alive') === 'Void'),
+    Kicked: members.filter(member => (member.status || 'Alive') === 'Kicked')
+  };
+
+  const displayedMembers = statusFilteredMembers[statusView] || [];
+  const totalGroupMembers = statusAllMembers[statusView] || [];
+  const statusCounts = Object.fromEntries(
+    STATUS_VIEW_OPTIONS.map(option => [option, statusFilteredMembers[option]?.length || 0])
+  );
+
+  const filteredCount = displayedMembers.length;
+  const totalGroupCount = totalGroupMembers.length;
+  const filtersApplied = Boolean(searchTerm || Object.values(filters).some(Boolean));
+  const statusLabel = statusView === 'Active' ? 'active members' : `${statusView.toLowerCase()} members`;
+  const statusViewLabel = statusView === 'Active' ? 'Active Members' : `${statusView} Members`;
+  const columnCount = 9;
   const startIndex = filteredCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endIndex = filteredCount === 0 ? 0 : Math.min(currentPage * itemsPerPage, filteredCount);
   const totalPages = filteredCount > 0 ? Math.ceil(filteredCount / itemsPerPage) : 0;
@@ -898,8 +927,10 @@ const MembersPage = () => {
   const isFirstPage = currentPage <= 1;
   const isLastPage = totalPages === 0 || currentPage >= totalPages;
   const paginationSummary = filteredCount === 0
-    ? 'No members to display'
-    : `Showing ${startIndex}-${endIndex} of ${filteredCount} member${filteredCount !== 1 ? 's' : ''}${filteredCount !== totalMembers ? ` (filtered from ${totalMembers})` : ''}`;
+    ? (filtersApplied
+        ? `No ${statusLabel} match your search criteria. Try different filters.`
+        : `No ${statusLabel} to display.`)
+    : `Showing ${startIndex}-${endIndex} of ${filteredCount} ${statusLabel}${filteredCount !== totalGroupCount ? ` (filtered from ${totalGroupCount})` : ''}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -922,7 +953,10 @@ const MembersPage = () => {
             <div className="bg-white shadow rounded-lg overflow-hidden">
               <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <h2 className="text-lg font-medium text-gray-900">Members List</h2>
+                  <h2 className="text-lg font-medium text-gray-900">
+                Members List
+                <span className="ml-2 text-sm font-normal text-gray-500">({statusViewLabel})</span>
+              </h2>
                   <button
                     onClick={handleOpen}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 whitespace-nowrap"
@@ -1044,41 +1078,60 @@ const MembersPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 px-2">
-                <div className="text-sm text-gray-600">
-                  {paginationSummary}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={isFirstPage}
-                    className={`px-3 py-1 rounded-md ${isFirstPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    Previous
-                  </button>
-                  {pageNumbers.map((page) => (
+              <div className="flex flex-col gap-3 mb-4 px-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {STATUS_VIEW_OPTIONS.map(option => (
                     <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-md ${currentPage === page ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                      key={option}
+                      onClick={() => handleStatusViewChange(option)}
+                      className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
+                        statusView === option
+                          ? 'bg-green-600 text-white border-green-600 shadow'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      }`}
                     >
-                      {page}
+                      {option}
+                      <span className={`ml-1 text-xs ${statusView === option ? 'text-green-100' : 'text-gray-500'}`}>
+                        ({statusCounts[option] ?? 0})
+                      </span>
                     </button>
                   ))}
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={isLastPage}
-                    className={`px-3 py-1 rounded-md ${isLastPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    Next
-                  </button>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <div className="text-sm text-gray-600">
+                    {paginationSummary}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={isFirstPage}
+                      className={`px-3 py-1 rounded-md ${isFirstPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      Previous
+                    </button>
+                    {pageNumbers.map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-md ${currentPage === page ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={isLastPage}
+                      className={`px-3 py-1 rounded-md ${isLastPage ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="relative overflow-x-auto w-full">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <colgroup>
-                      <col className="w-1/6" />
                       <col className="w-1/6" />
                       <col className="w-1/6" />
                       <col className="w-1/6" />
@@ -1110,9 +1163,6 @@ const MembersPage = () => {
                           Branch
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Period Start
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1126,20 +1176,20 @@ const MembersPage = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {loading ? (
                         <tr>
-                          <td colSpan="10" className="px-6 py-4 text-center text-sm text-gray-500">
+                          <td colSpan={columnCount} className="px-6 py-4 text-center text-sm text-gray-500">
                             Loading members...
                           </td>
                         </tr>
-                      ) : filteredMembers.length === 0 ? (
+                      ) : filteredCount === 0 ? (
                         <tr>
-                          <td colSpan="10" className="px-6 py-4 text-center text-sm text-gray-500">
-                            {searchTerm || Object.values(filters).some(Boolean) 
-                              ? 'No members match your search criteria. Try different filters.' 
-                              : 'No members found. Click "Add Member" to create one.'}
+                          <td colSpan={columnCount} className="px-6 py-4 text-center text-sm text-gray-500">
+                            {filtersApplied 
+                              ? `No ${statusLabel} match your search criteria. Try different filters.`
+                              : `No ${statusLabel} found. ${statusView === 'Active' ? 'Click "Add Member" to create one.' : 'Switch to a different status view.'}`}
                           </td>
                         </tr>
                       ) : (
-                        filteredMembers
+                        displayedMembers
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                           .map((member) => (
                           <tr 
@@ -1191,11 +1241,6 @@ const MembersPage = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {member.branch || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClasses(member.status)}`}>
-                                {member.status || 'Alive'}
-                              </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {periodData[member.id]?.period_start ? new Date(periodData[member.id].period_start).toLocaleDateString() : '--'}
