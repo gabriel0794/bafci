@@ -1,4 +1,7 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 import sequelize from '../config/db.js';
@@ -6,17 +9,62 @@ import sequelize from '../config/db.js';
 const { Revenue, User, Branch } = models;
 const router = express.Router();
 
+// Multer configuration for receipt uploads
+const uploadDir = 'uploads/receipts/';
+
+// Ensure the upload directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `receipt-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+// File filter to accept only JPEG and PNG
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only JPEG and PNG images are allowed'), false);
+  }
+};
+
+const upload = multer({ 
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max file size
+  }
+});
+
 // Add new revenue entry (Staff only)
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, upload.single('receipt'), async (req, res) => {
   try {
     if (req.user.role !== 2) { // 2 is staff role
       return res.status(403).json({ message: 'Access denied. Staff only.' });
     }
 
-    const revenue = await Revenue.create({
+    // Prepare revenue data
+    const revenueData = {
       ...req.body,
       userId: req.user.id,
-    });
+    };
+
+    // Add receipt path if file was uploaded
+    if (req.file) {
+      revenueData.receipt = req.file.path;
+    }
+
+    const revenue = await Revenue.create(revenueData);
 
     // Include user and branch data in the response
     const revenueWithDetails = await Revenue.findByPk(revenue.id, {
@@ -29,6 +77,14 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json(revenueWithDetails);
   } catch (error) {
     console.error('Error adding revenue:', error);
+    
+    // Delete uploaded file if there was an error
+    if (req.file) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting file:', err);
+      });
+    }
+    
     res.status(500).json({ 
       message: 'Server error',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined

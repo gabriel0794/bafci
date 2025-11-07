@@ -148,16 +148,10 @@ const RevenueSummary = () => {
 
   // Calculate totals for each period (including member payments)
   const calculateTotals = (revenueList, paymentList = []) => {
-    // Calculate revenue totals
-    let revenueTotal = 0;
-    let revenueAdded = 0;
+    // Calculate expenses from revenue list
     let expenses = 0;
 
     if (revenueList && revenueList.length > 0) {
-      revenueTotal = revenueList.reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0);
-      revenueAdded = revenueList
-        .filter(rev => parseFloat(rev.amount || 0) > 0)
-        .reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0);
       expenses = Math.abs(
         revenueList
           .filter(rev => parseFloat(rev.amount || 0) < 0)
@@ -165,14 +159,20 @@ const RevenueSummary = () => {
       );
     }
 
-    // Add member payments to totals
-    const paymentsTotal = paymentList && paymentList.length > 0
-      ? paymentList.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0)
-      : 0;
+    // Separate membership fee payments from monthly payments
+    const membershipFeePayments = paymentList ? paymentList.filter(p => p.membership_fee_paid) : [];
+    const monthlyPayments = paymentList ? paymentList.filter(p => !p.membership_fee_paid) : [];
+    
+    const membershipFeeTotal = membershipFeePayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+    const monthlyPaymentsTotal = monthlyPayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+
+    // Total revenue = (Monthly Payments + Membership Fees) - Expenses
+    const totalRevenue = membershipFeeTotal + monthlyPaymentsTotal - expenses;
 
     return {
-      total: revenueTotal + paymentsTotal,
-      added: revenueAdded + paymentsTotal, // Member payments are added revenue
+      total: totalRevenue,
+      monthlyPayments: monthlyPaymentsTotal,
+      membershipFees: membershipFeeTotal,
       expenses
     };
   };
@@ -207,7 +207,7 @@ const RevenueSummary = () => {
         </button>
       </div>
       {isVisible && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full h-[100px] items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full h-[100px] items-center">
           <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</div>
             <div className="text-xl font-semibold text-gray-900 truncate mt-1">
@@ -215,9 +215,15 @@ const RevenueSummary = () => {
             </div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Added</div>
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Payments</div>
+            <div className="text-xl font-semibold text-blue-600 truncate mt-1">
+              {formatCurrency(period.monthlyPayments)}
+            </div>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Membership Fee Payments</div>
             <div className="text-xl font-semibold text-green-600 truncate mt-1">
-              {formatCurrency(period.added)}
+              {formatCurrency(period.membershipFees)}
             </div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">

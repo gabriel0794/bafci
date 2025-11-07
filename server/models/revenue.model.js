@@ -27,9 +27,14 @@ Revenue.init({
     defaultValue: DataTypes.NOW,
   },
   category: {
-    type: DataTypes.ENUM('membership', 'training', 'merchandise', 'monthly', 'other'),
+    type: DataTypes.ENUM('electric_bill', 'water_bill', 'monthly_rent', 'internet'),
     allowNull: false,
-    defaultValue: 'other',
+    defaultValue: 'electric_bill',
+  },
+  receipt: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Path to uploaded receipt image for expenses',
   },
   branchId: {
     type: DataTypes.INTEGER,

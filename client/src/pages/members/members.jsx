@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import {
   Box, Button, TextField, Typography, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, MenuItem, Grid, FormControl, InputLabel, Select
+  DialogActions, DialogContentText, MenuItem, Grid, FormControl, InputLabel, Select
 } from '@mui/material';
 import CustomAlert from '../../components/common/CustomAlert';
 import Navbar from '../../components/Navbar';
 
 const SPECIAL_STATUSES = ['Deceased', 'Void', 'Kicked'];
 const STATUS_VIEW_OPTIONS = ['Active', ...SPECIAL_STATUSES];
+const PAYMENT_FILTER_OPTIONS = [
+  { label: 'All Members', value: 'all' },
+  { label: 'Paid', value: 'paid' },
+  { label: 'Unpaid', value: 'unpaid' }
+];
 
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
@@ -36,6 +41,21 @@ const MembersPage = () => {
   const [statusView, setStatusView] = useState('Active');
   const [itemsPerPage] = useState(15);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
+  const [paymentFilter, setPaymentFilter] = useState('all');
+
+  // Payment dialog state
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [confirmPaymentOpen, setConfirmPaymentOpen] = useState(false);
+  const paymentFormRef = useRef(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [newPayment, setNewPayment] = useState({
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    reference_number: '',
+    notes: ''
+  });
 
   // Fullscreen image viewer state
   const [fullscreenImage, setFullscreenImage] = useState(null);
@@ -65,7 +85,15 @@ const MembersPage = () => {
   useEffect(() => {
     setCurrentPage(1);
     setActionMenuOpenId(null);
-  }, [searchTerm, filters.ageBracket, filters.program, filters.branch, filters.endorsedBy, members.length]);
+  }, [
+    searchTerm,
+    filters.ageBracket,
+    filters.program,
+    filters.branch,
+    filters.endorsedBy,
+    members.length,
+    paymentFilter
+  ]);
 
   useEffect(() => {
     const relevantMembers = filteredMembers.filter(member => {
@@ -397,9 +425,34 @@ const MembersPage = () => {
         });
       }
     });
-    
+
+    if (paymentFilter !== 'all') {
+      const isMemberPaid = (member) => {
+        const paymentInfo = periodData[member.id];
+        if (!paymentInfo || !paymentInfo.next_payment) {
+          return false;
+        }
+
+        const nextPaymentDate = new Date(paymentInfo.next_payment);
+        if (Number.isNaN(nextPaymentDate.getTime())) {
+          return false;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        nextPaymentDate.setHours(0, 0, 0, 0);
+
+        return nextPaymentDate > today;
+      };
+
+      result = result.filter(member => {
+        const isPaid = isMemberPaid(member);
+        return paymentFilter === 'paid' ? isPaid : !isPaid;
+      });
+    }
+
     setFilteredMembers(result);
-  }, [searchTerm, members, filters]);
+  }, [searchTerm, members, filters, paymentFilter, periodData]);
   
   const handleFilterChange = (filterName, value) => {
     setFilters(prev => ({
@@ -415,6 +468,7 @@ const MembersPage = () => {
       branch: '',
       endorsedBy: ''
     });
+    setPaymentFilter('all');
     setSearchTerm('');
   };
 
@@ -666,6 +720,167 @@ const MembersPage = () => {
     setViewMember(null);
   };
 
+  // Payment dialog handlers
+  const handlePaymentOpen = async (member) => {
+    setPaymentLoading(true);
+    
+    // Auto-fill the payment amount with the member's contribution amount
+    setNewPayment(prev => ({
+      ...prev,
+      amount: member.contribution_amount || ''
+    }));
+    
+    setPaymentOpen(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`http://localhost:5000/api/payments/history/${member.id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setPaymentHistory(response.data || []);
+    } catch (error) {
+      console.error('Error fetching payment history:', error);
+      setPaymentHistory([]);
+      showAlert('Error', 'Failed to fetch payment history.', 'error');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handlePaymentClose = () => {
+    setPaymentOpen(false);
+    setPaymentHistory([]);
+    setShowPaymentHistory(false);
+    setNewPayment({
+      amount: '',
+      payment_date: new Date().toISOString().split('T')[0],
+      reference_number: '',
+      notes: ''
+    });
+  };
+
+  const handlePaymentChange = (e) => {
+    const { name, value } = e.target;
+    setNewPayment(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    if (!viewMember) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Validate payment data
+      if (!newPayment.amount || isNaN(parseFloat(newPayment.amount)) || parseFloat(newPayment.amount) <= 0) {
+        throw new Error('Please enter a valid payment amount');
+      }
+
+      const paymentDate = newPayment.payment_date || new Date().toISOString().split('T')[0];
+      const nextPaymentDate = new Date(paymentDate);
+      nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+      
+      const paymentPayload = {
+        member_id: viewMember.id,
+        amount: parseFloat(newPayment.amount),
+        payment_date: paymentDate,
+        reference_number: newPayment.reference_number,
+        notes: newPayment.notes
+      };
+      
+      // Create the payment record
+      await axios.post('http://localhost:5000/api/payments', paymentPayload, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-auth-token': token 
+        }
+      });
+
+      // Update the member's last payment date
+      await axios.put(
+        `http://localhost:5000/api/members/${viewMember.id}`,
+        {
+          last_payment_date: paymentDate,
+          next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+        },
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-auth-token': token 
+          }
+        }
+      );
+
+      // Refresh the payment history
+      const historyResponse = await axios.get(
+        `http://localhost:5000/api/payments/history/${viewMember.id}`,
+        { headers: { 'x-auth-token': token } }
+      );
+      setPaymentHistory(historyResponse.data);
+
+      // Update the view member data
+      setViewMember(prev => ({
+        ...prev,
+        last_payment_date: paymentDate,
+        next_payment_date: nextPaymentDate.toISOString().split('T')[0]
+      }));
+
+      // Close the payment dialog and show success message
+      handlePaymentClose();
+      showAlert(
+        'Payment Successful',
+        `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${viewMember.full_name || 'the member'}.`,
+        'success'
+      );
+      
+      // Refresh the members list and period data
+      await fetchMembers();
+      await fetchPaymentPeriods();
+    } catch (error) {
+      console.error('Error in payment submission:', error);
+      let errorMessage = 'Failed to record payment';
+      
+      if (error.response) {
+        errorMessage = error.response.data.message || error.response.data.error || errorMessage;
+      } else if (error.request) {
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
+      showAlert('Payment Error', errorMessage, 'error');
+    }
+  };
+
+  // Helper function to check if payment is due
+  const isPaymentDue = () => {
+    if (!paymentHistory || paymentHistory.length === 0) {
+      return true;
+    }
+
+    const sortedPayments = [...paymentHistory].sort((a, b) => 
+      new Date(b.payment_date) - new Date(a.payment_date)
+    );
+    const lastPayment = sortedPayments[0];
+
+    if (!lastPayment || !lastPayment.payment_date) {
+      return true;
+    }
+
+    const lastPaymentDate = new Date(lastPayment.payment_date);
+    const today = new Date();
+    
+    lastPaymentDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const nextDueDate = new Date(lastPaymentDate);
+    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+
+    return today >= nextDueDate;
+  };
+
   // Generate PDF with compact single-page layout
   const handleGeneratePdf = async () => {
     if (!viewMember) return;
@@ -913,7 +1128,8 @@ const MembersPage = () => {
 
   const filteredCount = displayedMembers.length;
   const totalGroupCount = totalGroupMembers.length;
-  const filtersApplied = Boolean(searchTerm || Object.values(filters).some(Boolean));
+  const hasActiveFilters = Object.values(filters).some(Boolean) || paymentFilter !== 'all';
+  const filtersApplied = Boolean(searchTerm || hasActiveFilters);
   const statusLabel = statusView === 'Active' ? 'active members' : `${statusView.toLowerCase()} members`;
   const statusViewLabel = statusView === 'Active' ? 'Active Members' : `${statusView} Members`;
   const columnCount = 9;
@@ -981,7 +1197,7 @@ const MembersPage = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  {(searchTerm || Object.values(filters).some(Boolean)) && (
+                  {(searchTerm || hasActiveFilters) && (
                     <div className="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
                       {searchTerm && (
                         <button
@@ -994,7 +1210,7 @@ const MembersPage = () => {
                           </svg>
                         </button>
                       )}
-                      {Object.values(filters).some(Boolean) && (
+                      {hasActiveFilters && (
                         <button
                           onClick={clearFilters}
                           className="text-gray-400 hover:text-gray-600 text-xs"
@@ -1079,23 +1295,40 @@ const MembersPage = () => {
                 </div>
               </div>
               <div className="flex flex-col gap-3 mb-4 px-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  {STATUS_VIEW_OPTIONS.map(option => (
-                    <button
-                      key={option}
-                      onClick={() => handleStatusViewChange(option)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
-                        statusView === option
-                          ? 'bg-green-600 text-white border-green-600 shadow'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
-                    >
-                      {option}
-                      <span className={`ml-1 text-xs ${statusView === option ? 'text-green-100' : 'text-gray-500'}`}>
-                        ({statusCounts[option] ?? 0})
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {PAYMENT_FILTER_OPTIONS.map(option => (
+                      <button
+                        key={option.value}
+                        onClick={() => setPaymentFilter(option.value)}
+                        className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
+                          paymentFilter === option.value
+                            ? 'bg-green-600 text-white border-green-600 shadow'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    {STATUS_VIEW_OPTIONS.map(option => (
+                      <button
+                        key={option}
+                        onClick={() => handleStatusViewChange(option)}
+                        className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
+                          statusView === option
+                            ? 'bg-green-600 text-white border-green-600 shadow'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        {option}
+                        <span className={`ml-1 text-xs ${statusView === option ? 'text-green-100' : 'text-gray-500'}`}>
+                          ({statusCounts[option] ?? 0})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <div className="text-sm text-gray-600">
@@ -2082,6 +2315,15 @@ const MembersPage = () => {
                   </div>
                   <div className="flex items-center space-x-4">
                     <button
+                      onClick={() => handlePaymentOpen(viewMember)}
+                      className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pay
+                    </button>
+                    <button
                       onClick={handleGeneratePdf}
                       className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
@@ -2216,6 +2458,300 @@ const MembersPage = () => {
             </div>
           </div>
         </div>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog
+        open={paymentOpen}
+        onClose={handlePaymentClose}
+        maxWidth="md"
+        fullWidth
+        className="relative z-50"
+        aria-labelledby="payment-dialog-title"
+      >
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" />
+        <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:p-6">
+              <div className="sm:flex sm:items-start">
+                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                  <h3 className="text-xl font-semibold leading-6 text-gray-900 mb-4" id="payment-dialog-title">
+                    Record Payment
+                  </h3>
+                  {paymentLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-b-green-500"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Member Info */}
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Member Information</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium text-gray-500">Name:</span> {viewMember?.full_name || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-500">Program:</span> {viewMember?.program || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-500">Age Bracket:</span> {viewMember?.age_bracket || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-500">Contribution:</span> 
+                            {viewMember?.contribution_amount ? `₱${Number(viewMember.contribution_amount).toLocaleString()}` : 'N/A'}
+                          </div>
+                          <div className="sm:col-span-2">
+                            <span className="font-medium text-gray-500">Availment Period:</span> {viewMember?.availment_period || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment Form */}
+                      <form ref={paymentFormRef} onSubmit={handlePaymentSubmit} className="space-y-6">
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium text-gray-700">Payment Details</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Amount
+                              </label>
+                              <div className="relative rounded-md shadow-sm">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                  <span className="text-gray-500 sm:text-sm">₱</span>
+                                </div>
+                                <input
+                                  type="number"
+                                  name="amount"
+                                  value={newPayment.amount}
+                                  readOnly
+                                  className="block w-full rounded-md border-gray-300 pl-7 pr-12 bg-gray-50 text-gray-700 cursor-not-allowed sm:text-sm p-2"
+                                  placeholder="0.00"
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Payment Date
+                              </label>
+                              <input
+                                type="date"
+                                name="payment_date"
+                                value={newPayment.payment_date}
+                                onChange={handlePaymentChange}
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Reference Number (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                name="reference_number"
+                                value={newPayment.reference_number}
+                                onChange={handlePaymentChange}
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
+                                placeholder="OR #, Receipt #, etc."
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Notes (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                name="notes"
+                                value={newPayment.notes}
+                                onChange={handlePaymentChange}
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
+                                placeholder="Additional notes"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Payment History */}
+                        <div className="mt-6">
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-medium text-gray-700">Payment Summary</h4>
+                              <span className="text-xs text-gray-500">
+                                {paymentHistory.length} {paymentHistory.length === 1 ? 'payment' : 'payments'}
+                              </span>
+                            </div>
+                            
+                            {paymentHistory.length > 0 ? (
+                              <>
+                                <div className="flex items-center justify-between py-2">
+                                  <span className="text-sm font-medium text-gray-600">Total Amount Paid:</span>
+                                  <span className="text-lg font-bold text-green-600">
+                                    ₱{paymentHistory.reduce((sum, payment) => sum + Number(payment.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                                
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPaymentHistory(!showPaymentHistory)}
+                                  className="text-sm text-green-600 hover:text-green-700 font-medium mt-2 flex items-center"
+                                >
+                                  {showPaymentHistory ? (
+                                    <>
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                      </svg>
+                                      Hide Payment History
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                      Show Payment History
+                                    </>
+                                  )}
+                                </button>
+
+                                {showPaymentHistory && (
+                                  <div className="mt-4 overflow-hidden border border-gray-200 rounded-lg">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Date
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Amount
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Reference
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="bg-white divide-y divide-gray-200">
+                                        {paymentHistory.map((payment, index) => (
+                                          <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                              {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                              {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                              {payment.reference_number || '—'}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-center py-2 text-sm text-gray-500">
+                                No payment history found for this member.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Form Actions */}
+                        <div className="mt-6">
+                          {!isPaymentDue() && paymentHistory.length > 0 && (
+                            <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                              <div className="flex">
+                                <svg className="h-5 w-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <div className="text-sm text-yellow-700">
+                                  <p className="font-medium">Payment not due yet</p>
+                                  <p className="mt-1">
+                                    Last payment: {new Date(paymentHistory.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))[0].payment_date).toLocaleDateString()}
+                                    {' • '}
+                                    Next due: {(() => {
+                                      const lastDate = new Date(paymentHistory.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))[0].payment_date);
+                                      lastDate.setMonth(lastDate.getMonth() + 1);
+                                      return lastDate.toLocaleDateString();
+                                    })()}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex justify-end space-x-3">
+                            <button
+                              type="button"
+                              onClick={handlePaymentClose}
+                              className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmPaymentOpen(true)}
+                              disabled={!isPaymentDue()}
+                              className={`inline-flex justify-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm focus-visible:outline-offset-2 ${
+                                isPaymentDue()
+                                  ? 'bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600 cursor-pointer'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                              title={!isPaymentDue() ? 'Payment is not due yet' : 'Record payment'}
+                            >
+                              Record Payment
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Payment Confirmation Dialog */}
+      <Dialog
+        open={confirmPaymentOpen}
+        onClose={() => setConfirmPaymentOpen(false)}
+        aria-labelledby="payment-confirm-dialog-title"
+        aria-describedby="payment-confirm-dialog-description"
+      >
+        <DialogTitle id="payment-confirm-dialog-title" className="bg-gray-50 px-6 py-4">
+          <span className="text-lg font-medium text-gray-900">Confirm Payment</span>
+        </DialogTitle>
+        <DialogContent className="bg-white px-6 py-4">
+          <DialogContentText id="payment-confirm-dialog-description" className="text-gray-700">
+            Are you sure you want to record this payment?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions className="bg-gray-50 px-6 py-4">
+          <button
+            onClick={() => setConfirmPaymentOpen(false)}
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              setConfirmPaymentOpen(false);
+              if (paymentFormRef.current) {
+                paymentFormRef.current.dispatchEvent(
+                  new Event('submit', { cancelable: true, bubbles: true })
+                );
+              }
+            }}
+            className="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+            autoFocus
+          >
+            Confirm
+          </button>
+        </DialogActions>
       </Dialog>
 
       {/* Fullscreen Image Viewer */}
