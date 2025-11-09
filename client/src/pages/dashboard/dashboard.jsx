@@ -4,6 +4,7 @@ import { authService } from '../../services/api';
 import RevenueSummary from '../../components/dashboard/RevenueSummary';
 import RevenueChart from '../../components/dashboard/RevenueChart';
 import MembersList from '../../components/dashboard/MembersList';
+import FieldWorkersList from '../../components/dashboard/FieldWorkersList';
 import Navbar from '../../components/Navbar';
 
 
@@ -79,10 +80,13 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* Members List - 50% width to allow space for another component */}
+            {/* Members List and Field Workers List */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 <MembersList />
+              </div>
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <FieldWorkersList />
               </div>
             </div>
           </main>

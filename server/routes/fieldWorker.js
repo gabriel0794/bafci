@@ -2,7 +2,7 @@ import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 
-const { FieldWorker } = models;
+const { FieldWorker, Branch } = models;
 const router = express.Router();
 
 // @route   GET api/field-workers
@@ -12,6 +12,13 @@ router.get('/', auth, async (req, res) => {
   try {
     const fieldWorkers = await FieldWorker.findAll({
       order: [['name', 'ASC']],
+      include: [
+        {
+          model: Branch,
+          as: 'branch',
+          attributes: ['id', 'name'],
+        },
+      ],
     });
     res.json(fieldWorkers);
   } catch (error) {
