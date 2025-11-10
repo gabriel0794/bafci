@@ -5,6 +5,7 @@ import RevenueSummary from '../../components/dashboard/RevenueSummary';
 import RevenueChart from '../../components/dashboard/RevenueChart';
 import MembersList from '../../components/dashboard/MembersList';
 import FieldWorkersList from '../../components/dashboard/FieldWorkersList';
+import ProgramsList from '../../components/dashboard/ProgramsList';
 import Navbar from '../../components/Navbar';
 
 
@@ -63,14 +64,12 @@ export default function Dashboard() {
           <main className="space-y-4 sm:space-y-6">
             {/* Revenue Summary and Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex flex-col h-[330px]">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Overview</h2>
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex flex-col h-[250px]">
                 <div className="flex-1">
                   <RevenueSummary />
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex flex-col h-[330px]">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Revenue Chart</h2>
                 <div className="flex-1 min-h-0">
                   <RevenueChart 
                     timeRange={timeRange}
@@ -80,13 +79,21 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* Members List and Field Workers List */}
+            {/* Members List, Field Workers List and Programs List */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              {/* MembersList takes half the screen */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden -mt-20">
                 <MembersList />
               </div>
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <FieldWorkersList />
+              
+              {/* FieldWorkersList and ProgramsList share the other half */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden h-[450px]">
+                  <FieldWorkersList />
+                </div>
+                <div className="lg:col-span-2 bg-white rounded-lg shadow-sm overflow-hidden h-[450px]">
+                  <ProgramsList />
+                </div>
               </div>
             </div>
           </main>

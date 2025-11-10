@@ -43,6 +43,7 @@ export default function MembersList() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewMember, setViewMember] = useState(null);
   const [newMembersToday, setNewMembersToday] = useState(0);
+  const [totalMembers, setTotalMembers] = useState(0);
   const navigate = useNavigate();
 
   // View member dialog handlers
@@ -85,6 +86,9 @@ export default function MembersList() {
         });
 
         const allMembersData = await allMembersRes.json();
+        
+        // Set total members count
+        setTotalMembers(allMembersData.length);
         
         // Calculate members added today (comparing only the date part, ignoring time)
         const today = new Date();
@@ -516,7 +520,7 @@ export default function MembersList() {
         </div>
       </Dialog>
       
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
         <div>
           <h2 className="text-lg font-medium text-gray-900">Members List</h2>
           <p className="text-sm text-gray-500 mt-1">Recent member activities</p>
@@ -530,47 +534,38 @@ export default function MembersList() {
       </div>
 
       {/* Search and New Members Count */}
-      <div className="mb-6 space-y-4">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-24 py-2.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
-            placeholder="Search by name or program"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-              <button
-                onClick={() => setSearchTerm('')}
-                className="text-gray-400 hover:text-gray-600 p-1"
-                title="Clear search"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-        
-        {/* New Members Today Count */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Total Members Count */}
+        <div className="bg-white shadow-sm rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-8 w-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Members</p>
+                <p className="text-2xl font-bold text-black">
+                  {totalMembers}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        {/* New Members Today Count */}
+        <div className="bg-white shadow-sm rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">New Members Today</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-black">
                   {newMembersToday}
                 </p>
               </div>

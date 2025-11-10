@@ -148,43 +148,22 @@ export default function FieldWorkersList() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b border-gray-200">
+      <div className="p-3 sm:p-4 border-b border-gray-200 bg-green-700">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Field Workers</h2>
-            <p className="mt-1 text-xs text-gray-600">Active field workers and their performance</p>
+            <h2 className="text-lg font-bold text-white">Field Workers</h2>
+            <p className="mt-1 text-xs text-white">Active field workers and their performance</p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 rounded-lg">
-            <People className="h-4 w-4 text-green-600" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white shadow-lg rounded-lg">
+            <People className="h-4 w-4 text-black" />
             <div className="text-right">
-              <p className="text-[11px] text-gray-600">Total Workers</p>
-              <p className="text-base font-semibold text-green-600">{fieldWorkers.length}</p>
+              <p className="text-[11px] text-black">Total Workers</p>
+              <p className="text-base font-semibold text-black">{fieldWorkers.length}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="px-3 sm:px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-lg p-2.5 shadow-sm">
-            <div className="flex items-center gap-2">
-              <TrendingUp sx={{ fontSize: 14 }} className="text-blue-600" />
-              <p className="text-xs text-gray-600">Total Members</p>
-            </div>
-            <p className="text-xl font-bold text-gray-900 mt-1">{getTotalMembers()}</p>
-          </div>
-          <div className="bg-white rounded-lg p-2.5 shadow-sm">
-            <div className="flex items-center gap-2">
-              <People sx={{ fontSize: 14 }} className="text-purple-600" />
-              <p className="text-xs text-gray-600">Avg per Worker</p>
-            </div>
-            <p className="text-xl font-bold text-gray-900 mt-1">
-              {fieldWorkers.length > 0 ? Math.round(getTotalMembers() / fieldWorkers.length) : 0}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Field Workers List */}
       <div className="flex-1 overflow-y-auto">
@@ -278,31 +257,6 @@ export default function FieldWorkersList() {
               </button>
             </div>
 
-            {/* Stats Section */}
-            {selectedWorker && (
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <People sx={{ fontSize: 20 }} className="text-green-600" />
-                      <p className="text-sm text-gray-600">Total Members</p>
-                    </div>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {selectedWorker.memberCount || 0}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp sx={{ fontSize: 20 }} className="text-blue-600" />
-                      <p className="text-sm text-gray-600">Percentage of Total</p>
-                    </div>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {getPercentage(selectedWorker.memberCount || 0)}%
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Members List */}
             <div className="flex-1 overflow-y-auto p-6">
