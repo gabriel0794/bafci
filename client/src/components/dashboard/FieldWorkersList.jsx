@@ -146,7 +146,7 @@ export default function FieldWorkersList() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full max-h-[90vh] flex flex-col">
       {/* Header */}
       <div className="p-3 sm:p-4 border-b border-gray-200 bg-green-700">
         <div className="flex items-center justify-between">

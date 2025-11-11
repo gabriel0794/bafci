@@ -54,7 +54,8 @@ const MembersPage = () => {
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
     reference_number: '',
-    notes: ''
+    notes: '',
+    late_fee_percentage: '15' // Default to 15%
   });
 
   // Fullscreen image viewer state
@@ -1446,8 +1447,20 @@ const MembersPage = () => {
                                   )}
                                 </div>
                                 <div className="ml-3">
-                                  <div className="text-sm font-medium text-gray-900">
+                                  <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
                                     {member.full_name || 'N/A'}
+                                    {(() => {
+                                      const paymentInfo = periodData[member.id];
+                                      if (!paymentInfo || !paymentInfo.next_payment) {
+                                        return <span className="text-red-600 font-bold" title="Payment overdue">*</span>;
+                                      }
+                                      const nextPaymentDate = new Date(paymentInfo.next_payment);
+                                      const today = new Date();
+                                      today.setHours(0, 0, 0, 0);
+                                      nextPaymentDate.setHours(0, 0, 0, 0);
+                                      const isUnpaid = nextPaymentDate <= today;
+                                      return isUnpaid ? <span className="text-red-600 font-bold" title="Payment overdue">*</span> : null;
+                                    })()}
                                   </div>
                                 </div>
                               </div>
@@ -2545,6 +2558,35 @@ const MembersPage = () => {
                                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
                                 required
                               />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Late Fee Percentage
+                                {(() => {
+                                  const paymentDate = new Date(newPayment.payment_date);
+                                  const dayOfMonth = paymentDate.getDate();
+                                  const isLate = dayOfMonth > 5;
+                                  return isLate ? (
+                                    <span className="ml-2 text-xs text-red-600 font-normal">(Payment is late)</span>
+                                  ) : (
+                                    <span className="ml-2 text-xs text-green-600 font-normal">(On-time, no fee)</span>
+                                  );
+                                })()}
+                              </label>
+                              <select
+                                name="late_fee_percentage"
+                                value={newPayment.late_fee_percentage}
+                                onChange={handlePaymentChange}
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
+                              >
+                                <option value="15">15%</option>
+                                <option value="25">25%</option>
+                                <option value="35">35%</option>
+                                <option value="40">40%</option>
+                              </select>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Applied only if payment is made after the 5th
+                              </p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Category, TrendingUp, Error } from '@mui/icons-material';
+import { Category, Error } from '@mui/icons-material';
 
 export default function ProgramsList() {
   const [programs, setPrograms] = useState([]);
@@ -59,9 +59,34 @@ export default function ProgramsList() {
     return programs.reduce((sum, program) => sum + getAgeBracketCount(program), 0);
   };
 
+  const programsByBranch = programs.reduce((acc, program) => {
+    const rawBranchName = getBranchName(program) || 'Unassigned';
+    const branchName = rawBranchName.trim() || 'Unassigned';
+
+    if (!acc[branchName]) {
+      acc[branchName] = [];
+    }
+
+    acc[branchName].push(program);
+    return acc;
+  }, {});
+
+  const sortedProgramsByBranch = Object.keys(programsByBranch)
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    .map((branch) => ({
+      branch,
+      programs: programsByBranch[branch]
+        .slice()
+        .sort((a, b) =>
+          (a.name ?? '').localeCompare(b.name ?? '', undefined, {
+            sensitivity: 'base',
+          })
+        ),
+    }));
+
   if (loading) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full max-h-[90vh] flex flex-col">
         <div className="p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-900">Programs</h2>
           <p className="mt-1 text-sm text-gray-600">Available programs and age brackets</p>
@@ -127,18 +152,42 @@ export default function ProgramsList() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {programs.map((program, index) => (
-              <div
-                key={program.id}
-                className="p-3 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-gray-900 truncate flex-1">
-                    {program.name}
-                  </h3>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    {getBranchName(program)}
+            {sortedProgramsByBranch.map(({ branch, programs: branchPrograms }) => (
+              <div key={branch}>
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
+                  <span className="text-xs font-semibold text-gray-700">
+                    {branch}
                   </span>
+                  <span className="text-[11px] text-gray-500">
+                    {branchPrograms.length}{' '}
+                    {branchPrograms.length === 1 ? 'Program' : 'Programs'}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-200">
+                  {branchPrograms.map((program) => {
+                    const ageBracketCount = getAgeBracketCount(program);
+                    const programName = program.name || 'Untitled Program';
+
+                    return (
+                      <div
+                        key={program.id ?? program._id ?? programName}
+                        className="p-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-medium text-gray-900 truncate flex-1">
+                            {programName}
+                          </h3>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-green-100 text-green-800">
+                            {ageBracketCount === 0
+                              ? 'No Age Brackets'
+                              : `${ageBracketCount} ${
+                                  ageBracketCount === 1 ? 'Age Bracket' : 'Age Brackets'
+                                }`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

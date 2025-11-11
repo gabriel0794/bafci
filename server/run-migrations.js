@@ -35,7 +35,8 @@ const MIGRATION_ORDER = [
   '20251003000000-create-members-table-only.js',
   '20251003011800-add-payment-fields-to-members.js',
   '20251003021351-create-payments.js',
-  '20251003020000-fix-database-schema.js'
+  '20251003020000-fix-database-schema.js',
+  '20251111000000-add-late-payment-fields.js'
 ];
 
 async function runMigrations() {
@@ -91,7 +92,8 @@ async function runMigrations() {
     for (const file of pendingMigrations) {
       try {
         console.log(`\nRunning migration: ${file}`);
-        const migration = await import(`file://${path.join(migrationsDir, file)}`);
+        const migrationModule = await import(`file://${path.join(migrationsDir, file)}`);
+        const migration = migrationModule.default || migrationModule;
         
         // Run the migration
         await migration.up(queryInterface, Sequelize, { transaction });

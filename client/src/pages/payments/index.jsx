@@ -28,7 +28,8 @@ const PaymentsPage = () => {
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
     reference_number: '',
-    notes: ''
+    notes: '',
+    late_fee_percentage: '15' // Default to 15%
   });
 
   // Alert state
@@ -611,6 +612,57 @@ const PaymentsPage = () => {
                       <form ref={paymentFormRef} onSubmit={handlePaymentSubmit} className="space-y-6">
                         <div className="space-y-4">
                           <h4 className="text-sm font-medium text-gray-700">Payment Details</h4>
+                          
+                          {/* Late Payment Warning */}
+                          {(() => {
+                            const paymentDate = new Date(newPayment.payment_date);
+                            const dayOfMonth = paymentDate.getDate();
+                            const isLate = dayOfMonth > 5;
+                            const LATE_FEE_PERCENTAGE = parseFloat(newPayment.late_fee_percentage) || 15;
+                            const baseAmount = parseFloat(newPayment.amount) || 0;
+                            const lateFee = isLate ? (baseAmount * LATE_FEE_PERCENTAGE) / 100 : 0;
+                            const totalAmount = baseAmount + lateFee;
+
+                            if (isLate && baseAmount > 0) {
+                              return (
+                                <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                                  <div className="flex">
+                                    <svg className="h-5 w-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    <div className="flex-1">
+                                      <h3 className="text-sm font-medium text-red-800">Late Payment Detected</h3>
+                                      <div className="mt-2 text-sm text-red-700">
+                                        <p>Payment date is after the 5th of the month. A late fee of {LATE_FEE_PERCENTAGE}% will be applied.</p>
+                                        <div className="mt-2 space-y-1">
+                                          <p><span className="font-medium">Base Amount:</span> ₱{baseAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                          <p><span className="font-medium">Late Fee ({LATE_FEE_PERCENTAGE}%):</span> ₱{lateFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                          <p className="text-base font-bold border-t border-red-300 pt-1 mt-1">
+                                            <span className="font-medium">Total Amount:</span> ₱{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            } else if (baseAmount > 0) {
+                              return (
+                                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                                  <div className="flex items-center">
+                                    <svg className="h-5 w-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    <p className="text-sm text-green-700">
+                                      <span className="font-medium">On-time payment</span> - Payment is within the 1st-5th window. No late fees apply.
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -645,6 +697,35 @@ const PaymentsPage = () => {
                                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
                                 required
                               />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Late Fee Percentage
+                                {(() => {
+                                  const paymentDate = new Date(newPayment.payment_date);
+                                  const dayOfMonth = paymentDate.getDate();
+                                  const isLate = dayOfMonth > 5;
+                                  return isLate ? (
+                                    <span className="ml-2 text-xs text-red-600 font-normal">(Payment is late)</span>
+                                  ) : (
+                                    <span className="ml-2 text-xs text-green-600 font-normal">(On-time, no fee)</span>
+                                  );
+                                })()}
+                              </label>
+                              <select
+                                name="late_fee_percentage"
+                                value={newPayment.late_fee_percentage}
+                                onChange={handlePaymentChange}
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2"
+                              >
+                                <option value="15">15%</option>
+                                <option value="25">25%</option>
+                                <option value="35">35%</option>
+                                <option value="40">40%</option>
+                              </select>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Applied only if payment is made after the 5th
+                              </p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -725,7 +806,16 @@ const PaymentsPage = () => {
                                             Date
                                           </th>
                                           <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Amount
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Late Fee
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Total
                                           </th>
                                           <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Reference
@@ -734,12 +824,46 @@ const PaymentsPage = () => {
                                       </thead>
                                       <tbody className="bg-white divide-y divide-gray-200">
                                         {paymentHistory.map((payment, index) => (
-                                          <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
+                                          <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`} className={payment.isLate || payment.is_late ? 'bg-red-50' : ''}>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                               {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
                                             </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                              {payment.isLate || payment.is_late ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                  </svg>
+                                                  Late
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                  </svg>
+                                                  On-time
+                                                </span>
+                                              )}
+                                            </td>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                               {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                              {payment.isLate || payment.is_late ? (
+                                                <span className="text-red-600 font-medium">
+                                                  ₱{Number(payment.lateFeeAmount || payment.late_fee_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                  {payment.lateFeePercentage || payment.late_fee_percentage ? (
+                                                    <span className="text-xs text-gray-500 ml-1">
+                                                      ({Number(payment.lateFeePercentage || payment.late_fee_percentage)}%)
+                                                    </span>
+                                                  ) : null}
+                                                </span>
+                                              ) : (
+                                                <span className="text-gray-400">—</span>
+                                              )}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                              ₱{Number(payment.totalAmount || payment.total_amount || payment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </td>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                               {payment.reference_number || '—'}

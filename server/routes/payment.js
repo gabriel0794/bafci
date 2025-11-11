@@ -28,7 +28,11 @@ router.get('/history/:memberId', auth, async (req, res) => {
         'next_payment',
         'notes', 
         'status', 
-        'createdAt'
+        'createdAt',
+        'isLate',
+        'lateFeePercentage',
+        'lateFeeAmount',
+        'totalAmount'
       ]
     });
 
@@ -45,7 +49,7 @@ router.get('/history/:memberId', auth, async (req, res) => {
 // Create a new payment for a member
 router.post('/', auth, async (req, res) => {
   try {
-    const { memberId, member_id, amount, payment_date, reference_number, referenceNumber, notes } = req.body;
+    const { memberId, member_id, amount, payment_date, reference_number, referenceNumber, notes, late_fee_percentage } = req.body;
     
     // Use member_id if provided, otherwise use memberId (for backward compatibility)
     const effectiveMemberId = member_id || memberId;
@@ -71,18 +75,39 @@ router.post('/', auth, async (req, res) => {
     nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
     const formattedNextPaymentDate = nextPaymentDate.toISOString().split('T')[0];
 
+    // Check if payment is late (made after the 5th of the month)
+    const dayOfMonth = paymentDate.getDate();
+    const isLate = dayOfMonth > 5;
+    
+    // Calculate late fee if payment is late
+    // Use custom late fee percentage from request, or default to 10%
+    const customLateFeePercentage = late_fee_percentage ? parseFloat(late_fee_percentage) : null;
+    const LATE_FEE_PERCENTAGE = isLate && customLateFeePercentage ? customLateFeePercentage : 10;
+    const baseAmount = parseFloat(amount);
+    let lateFeeAmount = 0;
+    let totalAmount = baseAmount;
+    
+    if (isLate) {
+      lateFeeAmount = (baseAmount * LATE_FEE_PERCENTAGE) / 100;
+      totalAmount = baseAmount + lateFeeAmount;
+    }
+
     try {
-      // Create payment with period_start and next_payment dates
+      // Create payment with period_start, next_payment dates, and late fee information
       const payment = await Payment.create({
         memberId: effectiveMemberId,
-        amount: parseFloat(amount),
+        amount: baseAmount,
         paymentDate: formattedPaymentDate,
         periodStart: formattedPaymentDate, // Set period_start same as payment_date
         nextPayment: formattedNextPaymentDate, // Set next_payment to 1 month after payment_date
         referenceNumber: referenceNumber || reference_number || null,
         notes: notes || null,
         status: 'completed',
-        createdBy: req.user.id
+        createdBy: req.user.id,
+        isLate: isLate,
+        lateFeePercentage: isLate ? LATE_FEE_PERCENTAGE : 0,
+        lateFeeAmount: lateFeeAmount,
+        totalAmount: totalAmount
       });
 
       // Update member's last contribution date (but not the period fields)

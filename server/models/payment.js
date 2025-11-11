@@ -51,6 +51,34 @@ Payment.init({
     field: 'next_payment',
     comment: 'Next payment due date'
   },
+  isLate: {
+    type: DataTypes.BOOLEAN,
+    field: 'is_late',
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Whether the payment was made after the 5th of the month'
+  },
+  lateFeePercentage: {
+    type: DataTypes.DECIMAL(5, 2),
+    field: 'late_fee_percentage',
+    defaultValue: 0,
+    allowNull: false,
+    comment: 'Late fee percentage applied to delayed payments'
+  },
+  lateFeeAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    field: 'late_fee_amount',
+    defaultValue: 0,
+    allowNull: false,
+    comment: 'Calculated late fee amount'
+  },
+  totalAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    field: 'total_amount',
+    defaultValue: 0,
+    allowNull: false,
+    comment: 'Total amount including late fees (amount + late_fee_amount)'
+  },
   createdAt: {
     type: DataTypes.DATE,
     field: 'created_at',
