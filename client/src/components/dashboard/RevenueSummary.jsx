@@ -202,33 +202,32 @@ const RevenueSummary = () => {
             viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
       </div>
       {isVisible && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full h-[100px] items-center">
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</div>
-            <div className="text-xl font-semibold text-gray-900 truncate mt-1">
+            <div className="text-xl font-semibold text-gray-900 mt-1 break-words">
               {formatCurrency(period.total)}
             </div>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Payments</div>
-            <div className="text-xl font-semibold text-blue-600 truncate mt-1">
+            <div className="text-xl font-semibold text-blue-600 mt-1 break-words">
               {formatCurrency(period.monthlyPayments)}
             </div>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Membership Fee Payments</div>
-            <div className="text-xl font-semibold text-green-600 truncate mt-1">
+            <div className="text-xl font-semibold text-green-600 mt-1 break-words">
               {formatCurrency(period.membershipFees)}
             </div>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow h-full flex flex-col justify-center">
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</div>
-            <div className="text-xl font-semibold text-red-600 truncate mt-1">
+            <div className="text-xl font-semibold text-red-600 mt-1 break-words">
               {formatCurrency(period.expenses)}
             </div>
           </div>
@@ -266,9 +265,9 @@ const RevenueSummary = () => {
 
   return (
     <div className="w-full h-[500px]">
-      <div className="flex justify-between items-center mb-4 h-[50px]">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
         <h2 className="text-lg font-medium text-gray-900">Revenue Overview</h2>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setPeriod('today')}
             className={`px-3 py-1 text-sm rounded-md ${

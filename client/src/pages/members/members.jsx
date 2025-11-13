@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import CustomAlert from '../../components/common/CustomAlert';
 import Navbar from '../../components/Navbar';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const SPECIAL_STATUSES = ['Deceased', 'Void', 'Kicked'];
 const STATUS_VIEW_OPTIONS = ['Active', ...SPECIAL_STATUSES];
@@ -18,8 +19,10 @@ const PAYMENT_FILTER_OPTIONS = [
 ];
 
 const MembersPage = () => {
+  const { addNotification } = useNotifications();
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
+  const [baseFilteredMembers, setBaseFilteredMembers] = useState([]);
   const [periodData, setPeriodData] = useState({}); // To store period data keyed by member ID
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -364,6 +367,41 @@ const MembersPage = () => {
     loadInitialData();
   }, []);
 
+  // Check for members with payments almost due (within 3 days)
+  useEffect(() => {
+    if (!members.length || !Object.keys(periodData).length) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    members.forEach(member => {
+      const paymentInfo = periodData[member.id];
+      if (!paymentInfo || !paymentInfo.next_payment) return;
+
+      const nextPaymentDate = new Date(paymentInfo.next_payment);
+      nextPaymentDate.setHours(0, 0, 0, 0);
+
+      // Calculate days until due
+      const daysUntilDue = Math.ceil((nextPaymentDate - today) / (1000 * 60 * 60 * 24));
+
+      // Notify if payment is due within 3 days (but not overdue)
+      if (daysUntilDue > 0 && daysUntilDue <= 3) {
+        // Check if we already notified about this (to avoid duplicate notifications)
+        const notificationKey = `payment_due_${member.id}_${paymentInfo.next_payment}`;
+        const alreadyNotified = localStorage.getItem(notificationKey);
+        
+        if (!alreadyNotified) {
+          addNotification({
+            type: 'payment_due',
+            message: `${member.full_name || 'Member'} has a payment due in ${daysUntilDue} day${daysUntilDue > 1 ? 's' : ''}`
+          });
+          // Mark as notified
+          localStorage.setItem(notificationKey, 'true');
+        }
+      }
+    });
+  }, [members, periodData, addNotification]);
+
   // Filter members based on search term and filters
   useEffect(() => {
     let result = [...members];
@@ -426,6 +464,9 @@ const MembersPage = () => {
         });
       }
     });
+
+    // Save the base filtered list (without payment filter) for stable counts
+    setBaseFilteredMembers(result);
 
     if (paymentFilter !== 'all') {
       const isMemberPaid = (member) => {
@@ -645,6 +686,16 @@ const MembersPage = () => {
         `Member ${editing ? 'updated' : 'added'} successfully!`,
         'success'
       );
+
+      // Add notification for new member (only if adding, not editing)
+      if (!editing) {
+        const currentUser = localStorage.getItem('username') || 'Staff';
+        addNotification({
+          type: 'new_member',
+          message: `New member ${currentMember.full_name || 'added'} has been registered by ${currentUser}`
+        });
+      }
+
       handleClose();
       
     } catch (error) {
@@ -835,6 +886,13 @@ const MembersPage = () => {
         `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${viewMember.full_name || 'the member'}.`,
         'success'
       );
+
+      // Add notification for payment made
+      const currentUser = localStorage.getItem('username') || 'Staff';
+      addNotification({
+        type: 'payment_made',
+        message: `Payment of ₱${Number(newPayment.amount).toFixed(2)} made by ${viewMember.full_name || 'Member'} (processed by ${currentUser})`
+      });
       
       // Refresh the members list and period data
       await fetchMembers();
@@ -1298,19 +1356,47 @@ const MembersPage = () => {
               <div className="flex flex-col gap-3 mb-4 px-2">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    {PAYMENT_FILTER_OPTIONS.map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => setPaymentFilter(option.value)}
-                        className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
-                          paymentFilter === option.value
-                            ? 'bg-green-600 text-white border-green-600 shadow'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                    {PAYMENT_FILTER_OPTIONS.map(option => {
+                      // Calculate count for each filter option
+                      let count = 0;
+                      if (option.value === 'all') {
+                        count = baseFilteredMembers.length;
+                      } else {
+                        const isMemberPaid = (member) => {
+                          const paymentInfo = periodData[member.id];
+                          if (!paymentInfo || !paymentInfo.next_payment) {
+                            return false;
+                          }
+                          const nextPaymentDate = new Date(paymentInfo.next_payment);
+                          if (Number.isNaN(nextPaymentDate.getTime())) {
+                            return false;
+                          }
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          nextPaymentDate.setHours(0, 0, 0, 0);
+                          return nextPaymentDate > today;
+                        };
+                        
+                        count = baseFilteredMembers.filter(member => {
+                          const isPaid = isMemberPaid(member);
+                          return option.value === 'paid' ? isPaid : !isPaid;
+                        }).length;
+                      }
+                      
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => setPaymentFilter(option.value)}
+                          className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
+                            paymentFilter === option.value
+                              ? 'bg-green-600 text-white border-green-600 shadow'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                          }`}
+                        >
+                          {option.label} <span className="font-bold">({count})</span>
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 justify-end">
                     {STATUS_VIEW_OPTIONS.map(option => (

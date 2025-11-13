@@ -5,7 +5,7 @@ import Dashboard from './pages/dashboard/dashboard';
 import RevenuePage from './pages/revenue';
 import { authService } from './services/api';
 import MembersPage from './pages/members/members';
-import PaymentsPage from './pages/payments';
+import AddBarangayMembers from './pages/members/AddBarangayMembers';
 import Layout from './components/Layout';
 
 // Create a protected route component
@@ -47,8 +47,8 @@ const router = createBrowserRouter([
             element: <MembersPage />,
           },
           {
-            path: '/payments',
-            element: <PaymentsPage />,
+            path: '/add-barangay-members',
+            element: <AddBarangayMembers />,
           },
         ],
       },

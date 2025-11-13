@@ -177,13 +177,6 @@ export default function ProgramsList() {
                           <h3 className="text-sm font-medium text-gray-900 truncate flex-1">
                             {programName}
                           </h3>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-green-100 text-green-800">
-                            {ageBracketCount === 0
-                              ? 'No Age Brackets'
-                              : `${ageBracketCount} ${
-                                  ageBracketCount === 1 ? 'Age Bracket' : 'Age Brackets'
-                                }`}
-                          </span>
                         </div>
                       </div>
                     );

@@ -14,6 +14,8 @@ import memberRoutes from './routes/member.js';
 import fieldWorkerRoutes from './routes/fieldWorker.js';
 import paymentRoutes from './routes/payment.js';
 import programRoutes from './routes/program.js';
+import notificationRoutes from './routes/notification.js';
+import { initializeSMSScheduler } from './services/smsScheduler.js';
 
 // Load environment variables
 dotenv.config();
@@ -61,7 +63,15 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/field-workers', fieldWorkerRoutes);
 app.use('/api/programs', programRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`);
+  
+  // Initialize automatic SMS scheduler after a short delay to ensure models are loaded
+  setTimeout(() => {
+    initializeSMSScheduler();
+  }, 2000);
+});

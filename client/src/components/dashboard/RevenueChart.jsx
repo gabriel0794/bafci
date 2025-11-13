@@ -331,10 +331,10 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        titleColor: '#9CA3AF',
-        bodyColor: '#F9FAFB',
-        borderColor: '#374151',
+        backgroundColor: 'rgba(31, 41, 55, 0.96)',
+        titleColor: '#D1D5DB',
+        bodyColor: '#F3F4F6',
+        borderColor: '#4B5563',
         borderWidth: 1,
         displayColors: false,
         callbacks: {
@@ -350,25 +350,25 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
             return context[0].label;
           }
         },
-        cornerRadius: 6,
+        cornerRadius: 4,
         titleFont: {
-          size: 12,
+          size: 10,
           weight: 'normal'
         },
         bodyFont: {
-          size: 14,
+          size: 13,
           weight: 'bold'
         },
         padding: {
-          top: 8,
-          right: 12,
-          bottom: 8,
-          left: 12
+          top: 6,
+          right: 10,
+          bottom: 6,
+          left: 10
         },
         yAlign: 'bottom',
         xAlign: 'center',
         caretSize: 0,
-        caretPadding: 8
+        caretPadding: 6
       },
       title: {
         display: true,
@@ -414,10 +414,10 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       },
       y: {
         grid: {
-          color: 'rgba(229, 231, 235, 0.8)',
+          color: 'rgba(75, 85, 99, 0.15)',
           drawBorder: false,
           drawTicks: false,
-          borderDash: [2, 2],
+          borderDash: [3, 3],
           tickLength: 0,
         },
         ticks: {
@@ -426,8 +426,8 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
             size: 9,
             family: 'Inter, system-ui, -apple-system, sans-serif'
           },
-          padding: 2,
-          maxTicksLimit: 5,
+          padding: 6,
+          maxTicksLimit: 4,
           callback: function(value) {
             if (value >= 1000000) {
               return '₱' + (value / 1000000).toFixed(1) + 'M';
@@ -445,25 +445,32 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     },
     elements: {
       line: {
-        borderWidth: 3,
+        borderWidth: 2.5,
         tension: 0.4,
         fill: true,
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx;
+          const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+          gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+          gradient.addColorStop(0.6, 'rgba(16, 185, 129, 0.08)');
+          gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+          return gradient;
+        },
       },
       point: {
         radius: 0,
-        hoverRadius: 6,
+        hoverRadius: 5,
         hoverBorderWidth: 2,
         hoverBackgroundColor: '#10B981',
-        hoverBorderColor: '#fff',
+        hoverBorderColor: '#1F2937',
       },
     },
     layout: {
       padding: {
-        top: 2,
-        right: 2,
-        bottom: 2,
-        left: 2,
+        top: 5,
+        right: 8,
+        bottom: 0,
+        left: 0,
       },
     },
     animation: {
@@ -559,15 +566,17 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       : 'Yearly Comparison';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col h-full">
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-md font-medium text-gray-900">Revenue Chart</h2>
-          <span className="text-sm text-gray-600">({headerSubtitle})</span>
+    <div className="bg-white rounded-xl shadow-sm p-3 flex flex-col h-full">
+      <div className="flex flex-col gap-3 mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">Revenue Chart</h2>
+            <span className="text-xs text-gray-600">({headerSubtitle})</span>
+          </div>
           
           {/* Archive controls - only show in daily view */}
           {viewMode === 'daily' && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center">
               {selectedMonth ? (
                 <button
                   onClick={handleBackToCurrent}
@@ -588,12 +597,12 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
         </div>
         
         {/* View mode toggle button */}
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleViewModeChange('daily')}
-            className={`px-3 py-1 text-xs rounded-md ${
+            className={`px-3 py-1 text-xs rounded-full transition-all ${
               viewMode === 'daily'
-                ? 'bg-green-600 text-white'
+                ? 'bg-green-600 text-white font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -601,9 +610,9 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
           </button>
           <button
             onClick={() => handleViewModeChange('monthly')}
-            className={`px-3 py-1 text-xs rounded-md ${
+            className={`px-3 py-1 text-xs rounded-full transition-all ${
               viewMode === 'monthly'
-                ? 'bg-green-600 text-white'
+                ? 'bg-green-600 text-white font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -611,9 +620,9 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
           </button>
           <button
             onClick={() => handleViewModeChange('yearly')}
-            className={`px-3 py-1 text-xs rounded-md ${
+            className={`px-3 py-1 text-xs rounded-full transition-all ${
               viewMode === 'yearly'
-                ? 'bg-green-600 text-white'
+                ? 'bg-green-600 text-white font-medium'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -634,7 +643,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
                 <button
                   key={monthData.key}
                   onClick={() => handleMonthSelect(monthData)}
-                  className="px-2 py-1.5 text-xs bg-white border border-gray-300 rounded-md hover:bg-indigo-50 hover:border-indigo-400 transition-colors"
+                  className="px-2 py-1.5 text-xs bg-white border border-gray-300 rounded-md hover:bg-green-50 hover:border-green-400 transition-colors"
                 >
                   {shortMonthNames[monthData.month]} {monthData.year}
                 </button>

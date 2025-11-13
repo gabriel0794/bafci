@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/api';
+import NotificationPanel from './NotificationPanel';
 
 export default function Navbar({ activePage }) {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export default function Navbar({ activePage }) {
     { name: 'Dashboard', href: '/dashboard', page: 'dashboard' },
     { name: 'Revenue', href: '/revenue', page: 'revenue' },
     { name: 'Members', href: '/members', page: 'members' },
-    { name: 'Payments', href: '/payments', page: 'payments' },
+    { name: 'Add Barangay Members', href: '/add-barangay-members', page: 'add-barangay-members' },
   ];
 
   return (
@@ -98,6 +99,9 @@ export default function Navbar({ activePage }) {
             </a>
           ))}
         </nav>
+
+        {/* Notification Panel */}
+        <NotificationPanel />
 
         {/* Bottom Section - Logout */}
         <div className="p-4 border-t border-gray-200">
