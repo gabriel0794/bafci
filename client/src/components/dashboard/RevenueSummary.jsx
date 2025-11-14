@@ -264,7 +264,7 @@ const RevenueSummary = () => {
   };
 
   return (
-    <div className="w-full h-[500px]">
+    <div className="w-full">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
         <h2 className="text-lg font-medium text-gray-900">Revenue Overview</h2>
         <div className="flex flex-wrap gap-2">

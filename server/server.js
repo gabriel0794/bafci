@@ -15,6 +15,7 @@ import fieldWorkerRoutes from './routes/fieldWorker.js';
 import paymentRoutes from './routes/payment.js';
 import programRoutes from './routes/program.js';
 import notificationRoutes from './routes/notification.js';
+import barangayMemberRoutes from './routes/barangayMember.js';
 import { initializeSMSScheduler } from './services/smsScheduler.js';
 
 // Load environment variables
@@ -64,6 +65,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/field-workers', fieldWorkerRoutes);
 app.use('/api/programs', programRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/barangay-members', barangayMemberRoutes);
 
 const PORT = process.env.PORT || 5000;
 

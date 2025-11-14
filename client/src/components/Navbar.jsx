@@ -39,7 +39,7 @@ export default function Navbar({ activePage }) {
     { name: 'Dashboard', href: '/dashboard', page: 'dashboard' },
     { name: 'Revenue', href: '/revenue', page: 'revenue' },
     { name: 'Members', href: '/members', page: 'members' },
-    { name: 'Add Barangay Members', href: '/add-barangay-members', page: 'add-barangay-members' },
+    { name: 'Barangays', href: '/add-barangay-members', page: 'add-barangay-members' },
   ];
 
   return (

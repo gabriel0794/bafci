@@ -7,6 +7,7 @@ import FieldWorker from './fieldWorker.js';
 import Payment from './payment.js';
 import Program from './program.model.js';
 import ProgramAgeBracket from './programAgeBracket.model.js';
+import BarangayMember from './barangayMember.model.js';
 
 // Initialize models
 const models = {
@@ -18,6 +19,7 @@ const models = {
   Payment,
   Program,
   ProgramAgeBracket,
+  BarangayMember,
   sequelize
 };
 

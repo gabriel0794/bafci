@@ -6,6 +6,7 @@ import RevenueChart from '../../components/dashboard/RevenueChart';
 import MembersList from '../../components/dashboard/MembersList';
 import FieldWorkersList from '../../components/dashboard/FieldWorkersList';
 import ProgramsList from '../../components/dashboard/ProgramsList';
+import TopBarangays from '../../components/dashboard/TopBarangays';
 import Navbar from '../../components/Navbar';
 
 
@@ -64,9 +65,14 @@ export default function Dashboard() {
           <main className="space-y-4 sm:space-y-6">
             {/* Revenue Overview and Chart - Side by Side */}
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-              {/* Revenue Overview - Separate Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 w-full lg:w-1/3 h-[450px]">
-                <RevenueSummary />
+              {/* Revenue Overview and Top Barangays - Combined Card */}
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 w-full lg:w-1/3 h-[450px] flex flex-col">
+                <div className="flex-shrink-0">
+                  <RevenueSummary />
+                </div>
+                <div className="border-t border-gray-200 mt-3 pt-3 flex-shrink-0">
+                  <TopBarangays />
+                </div>
               </div>
 
               {/* Revenue Chart - Separate Card */}
