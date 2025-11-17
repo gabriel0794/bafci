@@ -16,6 +16,7 @@ import paymentRoutes from './routes/payment.js';
 import programRoutes from './routes/program.js';
 import notificationRoutes from './routes/notification.js';
 import barangayMemberRoutes from './routes/barangayMember.js';
+import bootstrapRoutes from './routes/bootstrap.js';
 import { initializeSMSScheduler } from './services/smsScheduler.js';
 
 // Load environment variables
@@ -80,6 +81,7 @@ app.use('/api/field-workers', fieldWorkerRoutes);
 app.use('/api/programs', programRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/barangay-members', barangayMemberRoutes);
+app.use('/api/bootstrap', bootstrapRoutes); // TEMPORARY - Remove after seeding production DB
 
 const PORT = process.env.PORT || 5000;
 
