@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:5000/api';
+import { apiURL } from '../config/api.config.js';
+
+const API_URL = apiURL;
 
 export const authService = {
     async signup(userData) {

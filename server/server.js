@@ -35,8 +35,22 @@ sequelize.sync({ alter: false }).then(() => {
 
 // Init Middleware
 // Configure CORS with specific origin and credentials
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://bafci.onrender.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 const corsOptions = {
-  origin: 'http://localhost:5173', // Your frontend URL
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-auth-token', 'authorization', 'Authorization']
