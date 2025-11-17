@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { People, TrendingUp, Error, Close } from '@mui/icons-material';
+import { People, TrendingUp, Error as ErrorIcon, Close } from '@mui/icons-material';
 import { Dialog } from '@headlessui/react';
 
 export default function FieldWorkersList() {
@@ -10,9 +10,18 @@ export default function FieldWorkersList() {
   const [workerMembers, setWorkerMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    age: '',
+    branch_id: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchFieldWorkers();
+    fetchBranches();
   }, []);
 
   const fetchFieldWorkers = async () => {
@@ -45,6 +54,76 @@ export default function FieldWorkersList() {
       setError('Failed to load field workers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/branches', {
+        headers: { 
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBranches(data);
+      }
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+    }
+  };
+
+  const handleAddWorker = () => {
+    setFormData({ name: '', age: '', branch_id: '' });
+    setAddDialogOpen(true);
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitWorker = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.age || !formData.branch_id) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:5000/api/field-workers', {
+        method: 'POST',
+        headers: { 
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          age: parseInt(formData.age),
+          branch_id: parseInt(formData.branch_id)
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create field worker');
+      }
+
+      await fetchFieldWorkers();
+      setAddDialogOpen(false);
+      setFormData({ name: '', age: '', branch_id: '' });
+    } catch (err) {
+      console.error('Error creating field worker:', err);
+      alert(err.message || 'Failed to create field worker');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -131,7 +210,7 @@ export default function FieldWorkersList() {
         </div>
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="flex flex-col items-center gap-3 text-red-600">
-            <Error sx={{ fontSize: 40 }} />
+            <ErrorIcon sx={{ fontSize: 40 }} />
             <p className="text-sm">{error}</p>
             <button
               onClick={fetchFieldWorkers}
@@ -154,11 +233,20 @@ export default function FieldWorkersList() {
             <h2 className="text-lg font-bold text-white">Field Workers</h2>
             <p className="mt-1 text-xs text-white">Active field workers and their performance</p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white shadow-lg rounded-lg">
-            <People className="h-4 w-4 text-black" />
-            <div className="text-right">
-              <p className="text-[11px] text-black">Total Workers</p>
-              <p className="text-base font-semibold text-black">{fieldWorkers.length}</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAddWorker}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-100 text-green-700 rounded-lg transition-colors shadow-lg font-medium"
+              title="Add Field Worker"
+            >
+              <span className="text-xl leading-none cursor-pointer">+</span>
+            </button>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white shadow-lg rounded-lg">
+              <People className="h-4 w-4 text-black" />
+              <div className="text-right">
+                <p className="text-[11px] text-black">Total Workers</p>
+                <p className="text-base font-semibold text-black">{fieldWorkers.length}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -218,6 +306,105 @@ export default function FieldWorkersList() {
           </div>
         )}
       </div>
+
+      {/* Add Field Worker Dialog */}
+      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-md w-full bg-white rounded-xl shadow-xl">
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <Dialog.Title className="text-lg font-semibold text-gray-900">
+                Add New Field Worker
+              </Dialog.Title>
+              <button
+                onClick={() => setAddDialogOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <Close sx={{ fontSize: 24 }} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitWorker} className="p-6 space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter field worker name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
+                  Age *
+                </label>
+                <input
+                  type="number"
+                  id="age"
+                  name="age"
+                  value={formData.age}
+                  onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter age"
+                  min="18"
+                  max="100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="branch_id" className="block text-sm font-medium text-gray-700 mb-1">
+                  Branch *
+                </label>
+                <select
+                  id="branch_id"
+                  name="branch_id"
+                  value={formData.branch_id}
+                  onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select a branch</option>
+                  {branches.map(branch => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setAddDialogOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Adding...' : 'Add Worker'}
+                </button>
+              </div>
+            </form>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
 
       {/* Worker Details Dialog */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog} className="relative z-50">
