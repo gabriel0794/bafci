@@ -151,11 +151,12 @@ router.get('/:programId/age/:age', async (req, res) => {
 // Create a new program (admin only)
 router.post('/', async (req, res) => {
   try {
-    const { name, branchId, ageBrackets } = req.body;
+    const { name, benefits, branchId, ageBrackets } = req.body;
 
     // Create the program
     const program = await Program.create({
       name,
+      benefits,
       branchId,
       isActive: true
     });

@@ -13,6 +13,10 @@ Program.init({
     type: DataTypes.STRING,
     allowNull: false,
   },
+  benefits: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   branchId: {
     type: DataTypes.INTEGER,
     allowNull: false,
