@@ -39,6 +39,8 @@ sequelize.sync({ alter: false }).then(() => {
 const allowedOrigins = [
   'http://localhost:5173',
   'https://bafci.onrender.com',
+  'https://bafci-client.onrender.com',
+  'https://bafci-testing.onrender.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
