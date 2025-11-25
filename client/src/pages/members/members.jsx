@@ -65,6 +65,16 @@ const MembersPage = () => {
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+  // Upgrade dialog state
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeData, setUpgradeData] = useState({
+    newProgram: '',
+    newAgeBracket: '',
+    newContributionAmount: '',
+    newAvailmentPeriod: ''
+  });
+  const [availableProgramsForUpgrade, setAvailableProgramsForUpgrade] = useState([]);
+
   // Alert state
   const [alert, setAlert] = useState({
     open: false,
@@ -689,7 +699,7 @@ const MembersPage = () => {
 
       // Add notification for new member (only if adding, not editing)
       if (!editing) {
-        const currentUser = localStorage.getItem('username') || 'Staff';
+        const currentUser = await getCurrentUserFullName();
         addNotification({
           type: 'new_member',
           message: `New member ${currentMember.full_name || 'added'} has been registered by ${currentUser}`
@@ -888,7 +898,7 @@ const MembersPage = () => {
       );
 
       // Add notification for payment made
-      const currentUser = localStorage.getItem('username') || 'Staff';
+      const currentUser = await getCurrentUserFullName();
       addNotification({
         type: 'payment_made',
         message: `Payment of ₱${Number(newPayment.amount).toFixed(2)} made by ${viewMember.full_name || 'Member'} (processed by ${currentUser})`
@@ -911,6 +921,34 @@ const MembersPage = () => {
       
       showAlert('Payment Error', errorMessage, 'error');
     }
+  };
+
+  // Helper function to get current user's full name
+  const getCurrentUserFullName = async () => {
+    // Check if already in localStorage
+    let userFullName = localStorage.getItem('userFullName');
+    
+    if (!userFullName) {
+      // Fetch from API if not in localStorage
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/auth/me', {
+          headers: { 'x-auth-token': token }
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData && userData.name) {
+            userFullName = userData.name;
+            localStorage.setItem('userFullName', userFullName);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+    
+    return userFullName || 'Staff';
   };
 
   // Helper function to check if payment is due
@@ -938,6 +976,156 @@ const MembersPage = () => {
     nextDueDate.setMonth(nextDueDate.getMonth() + 1);
 
     return today >= nextDueDate;
+  };
+
+  // Upgrade dialog handlers
+  const handleUpgradeOpen = async (member) => {
+    if (!member) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      // Fetch programs for the member's branch
+      const response = await fetch(`http://localhost:5000/api/programs/branch/name/${encodeURIComponent(member.branch)}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableProgramsForUpgrade(data);
+      } else {
+        setAvailableProgramsForUpgrade([]);
+      }
+    } catch (error) {
+      console.error('Error fetching programs for upgrade:', error);
+      setAvailableProgramsForUpgrade([]);
+    }
+    
+    setUpgradeOpen(true);
+  };
+
+  const handleUpgradeClose = () => {
+    setUpgradeOpen(false);
+    setUpgradeData({
+      newProgram: '',
+      newAgeBracket: '',
+      newContributionAmount: '',
+      newAvailmentPeriod: ''
+    });
+  };
+
+  const handleUpgradeProgramChange = (e) => {
+    const programName = e.target.value;
+    const selectedProgram = availableProgramsForUpgrade.find(p => p.name === programName);
+    
+    if (selectedProgram && selectedProgram.ageBrackets && selectedProgram.ageBrackets.length > 0) {
+      const firstBracket = selectedProgram.ageBrackets[0];
+      setUpgradeData({
+        newProgram: programName,
+        newAgeBracket: firstBracket.ageRange,
+        newContributionAmount: parseFloat(firstBracket.contributionAmount),
+        newAvailmentPeriod: firstBracket.availmentPeriod
+      });
+    } else {
+      setUpgradeData({
+        newProgram: programName,
+        newAgeBracket: '',
+        newContributionAmount: '',
+        newAvailmentPeriod: ''
+      });
+    }
+  };
+
+  const getUpgradeAgeBrackets = () => {
+    if (!upgradeData.newProgram) return [];
+    
+    const selectedProgram = availableProgramsForUpgrade.find(p => p.name === upgradeData.newProgram);
+    if (selectedProgram && selectedProgram.ageBrackets) {
+      return [...selectedProgram.ageBrackets]
+        .sort((a, b) => a.minAge - b.minAge)
+        .map(bracket => ({
+          range: bracket.ageRange,
+          amount: parseFloat(bracket.contributionAmount),
+          availment: bracket.availmentPeriod,
+          minAge: bracket.minAge
+        }));
+    }
+    return [];
+  };
+
+  const handleUpgradeSubmit = async (e) => {
+    e.preventDefault();
+    if (!viewMember) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Validate upgrade data
+      if (!upgradeData.newProgram || !upgradeData.newAgeBracket) {
+        throw new Error('Please select a program and age bracket');
+      }
+
+      const formData = new FormData();
+      formData.append('program', upgradeData.newProgram);
+      formData.append('age_bracket', upgradeData.newAgeBracket);
+      formData.append('contribution_amount', upgradeData.newContributionAmount);
+      formData.append('availment_period', upgradeData.newAvailmentPeriod);
+
+      const response = await fetch(`http://localhost:5000/api/members/${viewMember.id}`, {
+        method: 'PUT',
+        headers: {
+          'x-auth-token': token
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upgrade member');
+      }
+
+      // Update the view member data
+      setViewMember(prev => ({
+        ...prev,
+        program: upgradeData.newProgram,
+        age_bracket: upgradeData.newAgeBracket,
+        contribution_amount: upgradeData.newContributionAmount,
+        availment_period: upgradeData.newAvailmentPeriod
+      }));
+
+      // Close the upgrade dialog and show success message
+      handleUpgradeClose();
+      showAlert(
+        'Upgrade Successful',
+        `${viewMember.full_name || 'Member'} has been upgraded to ${upgradeData.newProgram}.`,
+        'success'
+      );
+
+      // Add notification for upgrade
+      const currentUser = await getCurrentUserFullName();
+      addNotification({
+        type: 'member_upgrade',
+        message: `${viewMember.full_name || 'Member'} upgraded to ${upgradeData.newProgram} by ${currentUser}`
+      });
+      
+      // Refresh the members list
+      await fetchMembers();
+    } catch (error) {
+      console.error('Error upgrading member:', error);
+      let errorMessage = 'Failed to upgrade member';
+      
+      if (error.response) {
+        errorMessage = error.response.data.message || error.response.data.error || errorMessage;
+      } else if (error.request) {
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
+      showAlert('Upgrade Error', errorMessage, 'error');
+    }
   };
 
   // Generate PDF with compact single-page layout
@@ -2414,6 +2602,15 @@ const MembersPage = () => {
                   </div>
                   <div className="flex items-center space-x-4">
                     <button
+                      onClick={() => handleUpgradeOpen(viewMember)}
+                      className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                      Upgrade
+                    </button>
+                    <button
                       onClick={() => handlePaymentOpen(viewMember)}
                       className="hidden sm:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
@@ -2878,6 +3075,178 @@ const MembersPage = () => {
             autoFocus
           >
             Confirm
+          </button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Upgrade Dialog */}
+      <Dialog
+        open={upgradeOpen}
+        onClose={handleUpgradeClose}
+        maxWidth="sm"
+        fullWidth
+        aria-labelledby="upgrade-dialog-title"
+      >
+        <DialogTitle id="upgrade-dialog-title" className="bg-gray-50 px-6 py-4">
+          <span className="text-lg font-medium text-gray-900">Upgrade Member Program</span>
+        </DialogTitle>
+        <DialogContent className="bg-white px-6 py-4">
+          <form onSubmit={handleUpgradeSubmit} className="space-y-4 mt-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-4">
+                Current Program: <span className="font-semibold text-gray-900">{viewMember?.program || 'N/A'}</span>
+              </p>
+            </div>
+
+            {/* New Program Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Program *
+              </label>
+              <FormControl fullWidth size="small" required>
+                <Select
+                  name="newProgram"
+                  value={upgradeData.newProgram}
+                  onChange={handleUpgradeProgramChange}
+                  displayEmpty
+                  inputProps={{ 'aria-label': 'Select New Program' }}
+                  sx={{
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#d1d5db',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#10b981',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#10b981',
+                      borderWidth: '2px',
+                    },
+                    '& .MuiSelect-icon': {
+                      color: '#6b7280',
+                    },
+                    backgroundColor: 'white',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>Select New Program...</em>
+                  </MenuItem>
+                  {availableProgramsForUpgrade.map((program) => (
+                    <MenuItem 
+                      key={program.id} 
+                      value={program.name}
+                      disabled={!program.isActive || program.name === viewMember?.program}
+                    >
+                      {program.name} {program.name === viewMember?.program ? '(Current)' : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </div>
+
+            {/* Age Bracket Selection */}
+            {upgradeData.newProgram && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Age Bracket *
+                </label>
+                <FormControl fullWidth size="small" required>
+                  <Select
+                    name="newAgeBracket"
+                    value={upgradeData.newAgeBracket}
+                    onChange={(e) => {
+                      const selectedBracket = e.target.value;
+                      const selectedData = getUpgradeAgeBrackets().find(bracket => bracket.range === selectedBracket);
+                      setUpgradeData({
+                        ...upgradeData,
+                        newAgeBracket: selectedBracket,
+                        newContributionAmount: selectedData ? selectedData.amount : '',
+                        newAvailmentPeriod: selectedData ? selectedData.availment : ''
+                      });
+                    }}
+                    displayEmpty
+                    inputProps={{ 'aria-label': 'Select Age Bracket' }}
+                    sx={{
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#d1d5db',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#10b981',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#10b981',
+                        borderWidth: '2px',
+                      },
+                      '& .MuiSelect-icon': {
+                        color: '#6b7280',
+                      },
+                      backgroundColor: 'white',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Select Age Bracket...</em>
+                    </MenuItem>
+                    {getUpgradeAgeBrackets().map((bracket) => (
+                      <MenuItem key={`upgrade-bracket-${bracket.range}`} value={bracket.range}>
+                        {bracket.range} years
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </div>
+            )}
+
+            {/* Contribution Amount - Readonly */}
+            {upgradeData.newContributionAmount && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Contribution Amount
+                </label>
+                <input
+                  type="text"
+                  value={`${upgradeData.newContributionAmount} PHP`}
+                  readOnly
+                  className="block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm px-3 py-2"
+                />
+              </div>
+            )}
+
+            {/* Availment Period - Readonly */}
+            {upgradeData.newAvailmentPeriod && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Availment Period
+                </label>
+                <input
+                  type="text"
+                  value={upgradeData.newAvailmentPeriod}
+                  readOnly
+                  className="block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm px-3 py-2"
+                />
+              </div>
+            )}
+          </form>
+        </DialogContent>
+        <DialogActions className="bg-gray-50 px-6 py-4">
+          <button
+            onClick={handleUpgradeClose}
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpgradeSubmit}
+            disabled={!upgradeData.newProgram || !upgradeData.newAgeBracket}
+            className={`inline-flex justify-center rounded-md px-4 py-2 text-sm font-medium shadow-sm focus-visible:outline-offset-2 ${
+              upgradeData.newProgram && upgradeData.newAgeBracket
+                ? 'bg-purple-600 text-white hover:bg-purple-500 focus-visible:outline-purple-600 cursor-pointer'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Upgrade Program
           </button>
         </DialogActions>
       </Dialog>

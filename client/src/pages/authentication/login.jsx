@@ -39,6 +39,18 @@ export default function Login() {
   
       if (response.token) {
         authService.setAuthToken(response.token);
+        
+        // Fetch user profile to get the full name
+        try {
+          const userProfile = await authService.getUserProfile();
+          if (userProfile && userProfile.name) {
+            localStorage.setItem('userFullName', userProfile.name);
+          }
+        } catch (profileErr) {
+          console.error("Error fetching user profile:", profileErr);
+          // Continue with login even if profile fetch fails
+        }
+        
         navigate("/dashboard");
       } else {
         setError(response.error || "Login failed. Please try again.");
