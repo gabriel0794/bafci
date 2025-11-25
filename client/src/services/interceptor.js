@@ -1,12 +1,13 @@
 import { authService } from './api';
+import { apiURL } from '../config/api.config.js';
 
 export function setupInterceptors() {
   // This function will be called for every request
   const originalFetch = window.fetch;
   
   window.fetch = async function (url, options = {}) {
-    // Only add auth header for our API calls
-    if (url.startsWith('http://localhost:5000/api')) {
+    // Only add auth header for our API calls (check if URL starts with our API URL)
+    if (url.startsWith(apiURL) || url.includes('/api/')) {
       const token = authService.getAuthToken();
       
       // Add the auth header if we have a token
