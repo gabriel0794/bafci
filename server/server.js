@@ -46,24 +46,13 @@ const allowedOrigins = [
 
 console.log('Allowed CORS origins:', allowedOrigins);
 
+// TEMPORARY: Simplified CORS for debugging
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log('CORS allowed origin:', origin);
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  origin: true, // Allow all origins temporarily for testing
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'x-auth-token', 'authorization', 'Authorization', 'Accept'],
   exposedHeaders: ['x-auth-token'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
