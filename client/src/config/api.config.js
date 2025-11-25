@@ -5,8 +5,8 @@ const API_CONFIG = {
     apiURL: 'http://localhost:5000/api',
   },
   production: {
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://bafci-backend.onrender.com',
-    apiURL: `${import.meta.env.VITE_API_BASE_URL || 'https://bafci-backend.onrender.com'}/api`,
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://bafci-testing.onrender.com',
+    apiURL: `${import.meta.env.VITE_API_BASE_URL || 'https://bafci-testing.onrender.com'}/api`,
   }
 };
 
