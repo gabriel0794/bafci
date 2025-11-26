@@ -12,10 +12,12 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [memberPayments, setMemberPayments] = useState([]);
+  const [membershipFeePayments, setMembershipFeePayments] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [allRevenues, setAllRevenues] = useState([]);
   const [allPayments, setAllPayments] = useState([]);
+  const [allMembershipFees, setAllMembershipFees] = useState([]);
   const [viewMode, setViewMode] = useState('daily'); // 'daily', 'monthly', 'yearly'
   
   // Fetch revenue data and member payments based on time range
@@ -49,14 +51,26 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
         });
 
         let allPayments = [];
+        let membershipFees = [];
         if (membersResponse.ok) {
           const members = await membersResponse.json();
           
-          // Fetch payment history for each member
+          // Extract membership fee payments from members (one-time fees stored on member record)
+          membershipFees = members
+            .filter(member => member.membership_fee_paid && member.membership_fee_paid_date)
+            .map(member => ({
+              id: `mf-${member.id}`,
+              member_name: member.full_name,
+              member_id: member.id,
+              payment_date: member.membership_fee_paid_date,
+              amount: member.membership_fee_amount || 500
+            }));
+          
+          // Fetch payment history for each member (monthly payments)
           for (const member of members) {
             try {
               const paymentResponse = await fetch(
-                `${apiURL}/payments/member/${member.id}`,
+                `${apiURL}/payments/history/${member.id}`,
                 {
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -77,24 +91,27 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
         }
 
         setMemberPayments(allPayments);
+        setMembershipFeePayments(membershipFees);
         setAllRevenues(revenues);
         setAllPayments(allPayments);
+        setAllMembershipFees(membershipFees);
         
         let processedData;
         
         if (viewMode === 'monthly') {
           // Show total revenue per month for all months
-          processedData = processMonthlyComparisonData(revenues, allPayments);
+          processedData = processMonthlyComparisonData(revenues, allPayments, membershipFees);
         } else if (viewMode === 'yearly') {
           // Show total revenue per year for all years
-          processedData = processYearlyComparisonData(revenues, allPayments);
+          processedData = processYearlyComparisonData(revenues, allPayments, membershipFees);
         } else {
           // Filter data for current month only by default (daily view)
           const filteredRevenues = filterDataForMonth(revenues, selectedMonth);
           const filteredPayments = filterDataForMonth(allPayments, selectedMonth, true);
+          const filteredMembershipFees = filterDataForMonth(membershipFees, selectedMonth, true);
           
-          // Process and format the data for the chart (including member payments)
-          processedData = processRevenueData(filteredRevenues, filteredPayments);
+          // Process and format the data for the chart (including member payments and membership fees)
+          processedData = processRevenueData(filteredRevenues, filteredPayments, filteredMembershipFees);
         }
         
         setChartData(processedData);
@@ -129,8 +146,8 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
   };
 
   // Process monthly comparison data - one point per month showing total revenue
-  const processMonthlyComparisonData = (revenues, payments = []) => {
-    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0)) {
+  const processMonthlyComparisonData = (revenues, payments = [], membershipFees = []) => {
+    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0) && (!membershipFees || membershipFees.length === 0)) {
       return generateSampleData();
     }
 
@@ -138,7 +155,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    // Aggregate revenues by month
+    // Aggregate revenues by month (includes expenses as negative values)
     if (revenues && revenues.length > 0) {
       revenues.forEach(item => {
         if (!item.date) return;
@@ -153,7 +170,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       });
     }
 
-    // Aggregate member payments by month
+    // Aggregate monthly member payments by month
     if (payments && payments.length > 0) {
       payments.forEach(payment => {
         if (!payment.payment_date) return;
@@ -168,6 +185,21 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       });
     }
 
+    // Aggregate membership fee payments by month
+    if (membershipFees && membershipFees.length > 0) {
+      membershipFees.forEach(fee => {
+        if (!fee.payment_date) return;
+        const date = new Date(fee.payment_date);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        const displayKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        
+        if (!monthlyTotals[monthKey]) {
+          monthlyTotals[monthKey] = { total: 0, displayKey, date };
+        }
+        monthlyTotals[monthKey].total += parseFloat(fee.amount || 0);
+      });
+    }
+
     // Convert to arrays and sort by date (oldest to newest)
     const sortedEntries = Object.entries(monthlyTotals)
       .sort(([keyA, dataA], [keyB, dataB]) => dataA.date - dataB.date);
@@ -179,14 +211,14 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
   };
 
   // Process yearly comparison data - one point per year showing total revenue
-  const processYearlyComparisonData = (revenues, payments = []) => {
-    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0)) {
+  const processYearlyComparisonData = (revenues, payments = [], membershipFees = []) => {
+    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0) && (!membershipFees || membershipFees.length === 0)) {
       return generateSampleData();
     }
 
     const yearlyTotals = {};
 
-    // Aggregate revenues by year
+    // Aggregate revenues by year (includes expenses as negative values)
     if (revenues && revenues.length > 0) {
       revenues.forEach(item => {
         if (!item.date) return;
@@ -200,7 +232,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       });
     }
 
-    // Aggregate member payments by year
+    // Aggregate monthly member payments by year
     if (payments && payments.length > 0) {
       payments.forEach(payment => {
         if (!payment.payment_date) return;
@@ -214,6 +246,20 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       });
     }
 
+    // Aggregate membership fee payments by year
+    if (membershipFees && membershipFees.length > 0) {
+      membershipFees.forEach(fee => {
+        if (!fee.payment_date) return;
+        const date = new Date(fee.payment_date);
+        const yearKey = `${date.getFullYear()}`;
+
+        if (!yearlyTotals[yearKey]) {
+          yearlyTotals[yearKey] = { total: 0, year: date.getFullYear() };
+        }
+        yearlyTotals[yearKey].total += parseFloat(fee.amount || 0);
+      });
+    }
+
     const sortedEntries = Object.entries(yearlyTotals)
       .sort(([_, dataA], [__, dataB]) => dataA.year - dataB.year);
 
@@ -224,8 +270,8 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
   };
 
   // Process revenue data for the chart
-  const processRevenueData = (revenues, payments = []) => {
-    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0)) {
+  const processRevenueData = (revenues, payments = [], membershipFees = []) => {
+    if ((!revenues || revenues.length === 0) && (!payments || payments.length === 0) && (!membershipFees || membershipFees.length === 0)) {
       return generateSampleData();
     }
     
@@ -239,7 +285,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     // Ensure we have an entry for today
     groupedData[todayStr] = 0;
     
-    // Add revenue entries
+    // Add revenue entries (includes expenses as negative values)
     if (revenues && revenues.length > 0) {
       revenues.forEach(item => {
         const date = new Date(item.date).toLocaleDateString();
@@ -250,7 +296,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       });
     }
 
-    // Add member payments
+    // Add monthly member payments
     if (payments && payments.length > 0) {
       payments.forEach(payment => {
         const date = new Date(payment.payment_date).toLocaleDateString();
@@ -258,6 +304,17 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
           groupedData[date] = 0;
         }
         groupedData[date] += parseFloat(payment.amount || 0);
+      });
+    }
+
+    // Add membership fee payments
+    if (membershipFees && membershipFees.length > 0) {
+      membershipFees.forEach(fee => {
+        const date = new Date(fee.payment_date).toLocaleDateString();
+        if (!groupedData[date]) {
+          groupedData[date] = 0;
+        }
+        groupedData[date] += parseFloat(fee.amount || 0);
       });
     }
 
@@ -513,6 +570,19 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     allPayments.forEach(payment => {
       if (payment.payment_date) {
         const date = new Date(payment.payment_date);
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        // Only include past months (not current month)
+        if (year < currentYear || (year === currentYear && month < currentMonth)) {
+          months.add(`${year}-${month}`);
+        }
+      }
+    });
+
+    // Get months from membership fee payments
+    allMembershipFees.forEach(fee => {
+      if (fee.payment_date) {
+        const date = new Date(fee.payment_date);
         const month = date.getMonth();
         const year = date.getFullYear();
         // Only include past months (not current month)
