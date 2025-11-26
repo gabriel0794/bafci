@@ -18,17 +18,24 @@ export function setupInterceptors() {
       
       // Add the auth header if we have a token
       if (token) {
-        // Ensure options.headers exists
-        if (!options.headers) {
-          options.headers = {};
+        // Initialize options if not exists
+        if (!options) {
+          options = {};
         }
         
-        // Create a new Headers object or plain object
-        options.headers = {
-          ...options.headers,
-          'x-auth-token': token,
-        };
-        console.log('✅ Added x-auth-token to headers');
+        // Handle both Headers object and plain object
+        if (options.headers instanceof Headers) {
+          // If it's a Headers object, set the header directly
+          options.headers.set('x-auth-token', token);
+          console.log('✅ Added x-auth-token to Headers object');
+        } else {
+          // If it's a plain object or doesn't exist, create/update it
+          options.headers = {
+            ...(options.headers || {}),
+            'x-auth-token': token,
+          };
+          console.log('✅ Added x-auth-token to headers object');
+        }
         console.log('📋 Final headers:', options.headers);
       }
     }
