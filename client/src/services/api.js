@@ -69,20 +69,16 @@ export const authService = {
   // Add this method to set the auth token for future requests
   setAuthToken(token) {
     if (token) {
-      console.log('✅ Saving token to localStorage');
       localStorage.setItem('token', token);
     } else {
-      console.log('🗑️ Removing token from localStorage');
-      console.trace('Token removal stack trace:');
+      console.log('🗑️ Token removed from localStorage');
       localStorage.removeItem('token');
     }
   },
 
   // Add this method to get the auth token
   getAuthToken() {
-    const token = localStorage.getItem('token');
-    console.log('🔑 Getting token from localStorage:', token ? 'Token exists' : 'No token');
-    return token;
+    return localStorage.getItem('token');
   },
 
   // Get the authenticated user's profile

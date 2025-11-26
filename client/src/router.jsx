@@ -11,7 +11,16 @@ import Layout from './components/Layout';
 // Create a protected route component
 const ProtectedRoute = () => {
   const token = authService.getAuthToken();
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
+  
+  console.log('🔒 ProtectedRoute check - Token exists:', !!token);
+  
+  if (!token) {
+    console.log('❌ No token found, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+  
+  console.log('✅ Token found, allowing access');
+  return <Outlet />;
 };
 
 const router = createBrowserRouter([

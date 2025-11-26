@@ -6,46 +6,32 @@ export function setupInterceptors() {
   const originalFetch = window.fetch;
   
   window.fetch = async function (url, options = {}) {
-    console.log('🌐 Interceptor: Fetch called for URL:', url);
-    console.log('🌐 apiURL:', apiURL);
-    console.log('🌐 URL starts with apiURL?', url.startsWith(apiURL));
-    console.log('🌐 URL includes /api/?', url.includes('/api/'));
-    
-    // Clone options to avoid modifying the original
-    const clonedOptions = { ...options };
-    
-    // Only add auth header for our API calls (check if URL starts with our API URL)
+    // Only add auth header for our API calls
     if (url.startsWith(apiURL) || url.includes('/api/')) {
       const token = authService.getAuthToken();
-      console.log('🔐 Token retrieved:', token ? 'EXISTS' : 'MISSING');
       
       // Add the auth header if we have a token
       if (token) {
-        // Handle both Headers object and plain object
-        if (clonedOptions.headers instanceof Headers) {
-          // If it's a Headers object, clone it and set the header
-          const newHeaders = new Headers(clonedOptions.headers);
-          newHeaders.set('x-auth-token', token);
-          clonedOptions.headers = newHeaders;
-          console.log('✅ Added x-auth-token to Headers object');
-        } else {
-          // If it's a plain object or doesn't exist, create/update it
-          clonedOptions.headers = {
-            ...(clonedOptions.headers || {}),
+        // Create new options object with headers
+        options = {
+          ...options,
+          headers: {
+            ...(options.headers || {}),
             'x-auth-token': token,
-          };
-          console.log('✅ Added x-auth-token to headers object');
-        }
-        console.log('📋 Final headers:', clonedOptions.headers);
+          },
+        };
+        console.log('✅ Token attached to request:', url);
+      } else {
+        console.warn('⚠️ No token found for API request:', url);
       }
     }
 
-    const response = await originalFetch(url, clonedOptions);
+    const response = await originalFetch(url, options);
     
     // Handle 401 Unauthorized responses
     if (response.status === 401) {
       console.error(' 401 Unauthorized response from:', url);
-      console.error('Request headers:', clonedOptions.headers);
+      console.error('Request headers:', options.headers);
       console.error('Token exists:', !!authService.getAuthToken());
       
       // Clear the invalid token
