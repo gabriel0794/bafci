@@ -69,15 +69,20 @@ export const authService = {
   // Add this method to set the auth token for future requests
   setAuthToken(token) {
     if (token) {
+      console.log('✅ Saving token to localStorage');
       localStorage.setItem('token', token);
     } else {
+      console.log('🗑️ Removing token from localStorage');
+      console.trace('Token removal stack trace:');
       localStorage.removeItem('token');
     }
   },
 
   // Add this method to get the auth token
   getAuthToken() {
-    return localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    console.log('🔑 Getting token from localStorage:', token ? 'Token exists' : 'No token');
+    return token;
   },
 
   // Get the authenticated user's profile
@@ -86,8 +91,8 @@ export const authService = {
       const response = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': this.getAuthToken()
+          'Content-Type': 'application/json'
+          // x-auth-token will be added by the interceptor
         },
       });
 
