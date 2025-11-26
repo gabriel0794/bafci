@@ -26,6 +26,12 @@ export default function Dashboard() {
       try {
         const userProfile = await authService.getUserProfile();
         
+        // Redirect role 3 (Account Manager) to signup page to create accounts
+        if (userProfile.role === 3) {
+          navigate('/signup');
+          return;
+        }
+        
         setUserData({ 
           name: userProfile.name || 'User',
           ...userProfile // Spread other user data if available

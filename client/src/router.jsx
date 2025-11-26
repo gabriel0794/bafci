@@ -17,20 +17,20 @@ const ProtectedRoute = () => {
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: <Navigate to="/dashboard" replace />,
   },
   {
     path: '/login',
     element: <Login />,
   },
-  {
-    path: '/signup',
-    element: <Signup />,
-  },
   // Protected routes
   {
     element: <ProtectedRoute />,
     children: [
+      {
+        path: '/signup',
+        element: <Signup />,
+      },
       {
         element: <Layout><Outlet /></Layout>,
         children: [
