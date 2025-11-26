@@ -90,6 +90,15 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
       memberData.picture = req.file.filename;
     }
 
+    // Auto-set membershipFeePaidDate to today if membershipFeePaid is true and date not provided
+    if (memberData.membershipFeePaid !== false && !memberData.membershipFeePaidDate) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      memberData.membershipFeePaidDate = `${year}-${month}-${day}`;
+    }
+
     const member = await Member.create({
       ...memberData,
       createdBy: userId,

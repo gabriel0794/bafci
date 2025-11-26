@@ -80,6 +80,7 @@ const RevenuePage = () => {
   const [revenues, setRevenues] = useState([]);
   const [branches, setBranches] = useState([]);
   const [memberPayments, setMemberPayments] = useState([]);
+  const [membershipFeePayments, setMembershipFeePayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showRevenueConfirm, setShowRevenueConfirm] = useState(false);
@@ -164,12 +165,24 @@ const RevenuePage = () => {
 
       const members = await membersResponse.json();
 
-      // Then fetch payment history for each member
+      // Extract membership fee payments from members (one-time fees stored on member record)
+      const membershipFees = members
+        .filter(member => member.membership_fee_paid && member.membership_fee_paid_date)
+        .map(member => ({
+          id: `mf-${member.id}`,
+          member_name: member.full_name,
+          member_id: member.id,
+          payment_date: member.membership_fee_paid_date,
+          amount: member.membership_fee_amount || 500 // Default to 500 if not set
+        }));
+      setMembershipFeePayments(membershipFees);
+
+      // Then fetch payment history for each member (monthly payments)
       const allPayments = [];
       for (const member of members) {
         try {
           const paymentResponse = await fetch(
-            `${apiURL}/payments/member/${member.id}`,
+            `${apiURL}/payments/history/${member.id}`,
             {
               method: 'GET',
               headers: {
@@ -630,18 +643,18 @@ const RevenuePage = () => {
                   {(() => {
                     const today = new Date().toISOString().split('T')[0];
                     
-                    // Filter monthly payments (not membership fees)
+                    // Filter monthly payments (all payments in memberPayments are monthly - membership fees are separate)
                     const filteredPayments = showArchive
                       ? memberPayments.filter(p => {
                           const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
                           const isArchived = paymentDate !== today;
                           const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
                           const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
-                          return !p.membership_fee_paid && isArchived && afterStart && beforeEnd;
+                          return isArchived && afterStart && beforeEnd;
                         })
                       : memberPayments.filter(p => {
                           const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
-                          return !p.membership_fee_paid && paymentDate === today;
+                          return paymentDate === today;
                         });
 
                     const total = filteredPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
@@ -695,11 +708,11 @@ const RevenuePage = () => {
                       const isArchived = paymentDate !== today;
                       const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
                       const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
-                      return !p.membership_fee_paid && isArchived && afterStart && beforeEnd;
+                      return isArchived && afterStart && beforeEnd;
                     }).length
                   : memberPayments.filter(p => {
                       const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
-                      return !p.membership_fee_paid && paymentDate === today;
+                      return paymentDate === today;
                     }).length;
               })()}
               itemsPerPage={itemsPerPage}
@@ -727,23 +740,24 @@ const RevenuePage = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {(() => {
                     const today = new Date().toISOString().split('T')[0];
-                    const membershipFees = memberPayments.filter(p => {
+                    // Filter membership fees paid today from the membershipFeePayments state
+                    const todaysMembershipFees = membershipFeePayments.filter(p => {
                       const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
-                      return p.membership_fee_paid && paymentDate === today;
+                      return paymentDate === today;
                     });
 
-                    const total = membershipFees.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                    const total = todaysMembershipFees.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
                     
                     // Pagination
                     const startIndex = (membershipFeePage - 1) * itemsPerPage;
                     const endIndex = startIndex + itemsPerPage;
-                    const paginatedFees = membershipFees.slice(startIndex, endIndex);
+                    const paginatedFees = todaysMembershipFees.slice(startIndex, endIndex);
 
                     return (
                       <>
                         {paginatedFees.length > 0 ? (
                           paginatedFees.map((payment) => (
-                            <tr key={`mf-${payment.id}`} className="hover:bg-green-50">
+                            <tr key={payment.id} className="hover:bg-green-50">
                               <td className="px-3 py-2 text-xs text-gray-500">{formatDate(payment.payment_date)}</td>
                               <td className="px-3 py-2 text-xs text-gray-900">{payment.member_name}</td>
                               <td className="px-3 py-2 text-right text-xs font-medium text-green-600">
@@ -758,7 +772,7 @@ const RevenuePage = () => {
                             </td>
                           </tr>
                         )}
-                        {membershipFees.length > 0 && (
+                        {todaysMembershipFees.length > 0 && (
                           <tr className="bg-green-100 font-semibold">
                             <td colSpan="2" className="px-3 py-2 text-xs text-gray-900">Total (All Pages)</td>
                             <td className="px-3 py-2 text-right text-xs font-bold text-green-700">
@@ -774,10 +788,10 @@ const RevenuePage = () => {
             </div>
             <Pagination
               currentPage={membershipFeePage}
-              totalItems={memberPayments.filter(p => {
+              totalItems={membershipFeePayments.filter(p => {
                 const today = new Date().toISOString().split('T')[0];
                 const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
-                return p.membership_fee_paid && paymentDate === today;
+                return paymentDate === today;
               }).length}
               itemsPerPage={itemsPerPage}
               onPageChange={setMembershipFeePage}
