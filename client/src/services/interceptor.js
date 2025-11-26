@@ -23,10 +23,15 @@ export function setupInterceptors() {
     
     // Handle 401 Unauthorized responses
     if (response.status === 401) {
+      console.error(' 401 Unauthorized response from:', url);
+      console.error('Request headers:', options.headers);
+      console.error('Token exists:', !!authService.getAuthToken());
+      
       // Clear the invalid token
       authService.setAuthToken(null);
       // Redirect to login if we're not already there
       if (!window.location.pathname.includes('/login')) {
+        console.log('Redirecting to login due to 401 response');
         window.location.href = '/login';
       }
     }
