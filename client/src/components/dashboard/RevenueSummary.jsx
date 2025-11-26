@@ -7,6 +7,7 @@ const RevenueSummary = () => {
   // State hooks must be called at the top level
   const [revenues, setRevenues] = useState([]);
   const [memberPayments, setMemberPayments] = useState([]);
+  const [membershipFeePayments, setMembershipFeePayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activePeriod, setActivePeriod] = useState('today'); // 'today', 'weekly', 'monthly', 'yearly'
@@ -68,14 +69,26 @@ const RevenueSummary = () => {
         });
 
         let allPayments = [];
+        let membershipFees = [];
         if (membersResponse.ok) {
           const members = await membersResponse.json();
           
-          // Fetch payment history for each member
+          // Extract membership fee payments from members (one-time fees stored on member record)
+          membershipFees = members
+            .filter(member => member.membership_fee_paid && member.membership_fee_paid_date)
+            .map(member => ({
+              id: `mf-${member.id}`,
+              member_name: member.full_name,
+              member_id: member.id,
+              payment_date: member.membership_fee_paid_date,
+              amount: member.membership_fee_amount || 500
+            }));
+          
+          // Fetch payment history for each member (monthly payments)
           for (const member of members) {
             try {
               const paymentResponse = await fetch(
-                `${apiURL}/payments/member/${member.id}`,
+                `${apiURL}/payments/history/${member.id}`,
                 {
                   method: 'GET',
                   headers: {
@@ -97,6 +110,7 @@ const RevenueSummary = () => {
         }
 
         setMemberPayments(allPayments);
+        setMembershipFeePayments(membershipFees);
       } catch (err) {
         console.error('Error fetching revenue data:', err);
         setError('Failed to load revenue data');
@@ -132,6 +146,18 @@ const RevenueSummary = () => {
       .sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date));
   };
 
+  // Filter membership fee payments by date range
+  const filterMembershipFeesByDateRange = (startDate, endDate) => {
+    if (!membershipFeePayments) return [];
+    return membershipFeePayments
+      .filter(payment => {
+        if (!payment.payment_date) return false;
+        const paymentDate = new Date(payment.payment_date);
+        return paymentDate >= startDate && paymentDate <= endDate;
+      })
+      .sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date));
+  };
+
   if (loading) return <div>Loading revenue data...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
@@ -141,14 +167,20 @@ const RevenueSummary = () => {
   const monthlyRevenues = filterRevenuesByDateRange(monthStart, monthEnd);
   const yearlyRevenues = filterRevenuesByDateRange(yearStart, yearEnd);
 
-  // Filter member payments for each period
+  // Filter member payments for each period (monthly payments from payments table)
   const dailyPayments = filterPaymentsByDateRange(todayStart, todayEnd);
   const weeklyPayments = filterPaymentsByDateRange(weekStart, weekEnd);
-  const monthlyPayments = filterPaymentsByDateRange(monthStart, monthEnd);
+  const monthlyPaymentsFiltered = filterPaymentsByDateRange(monthStart, monthEnd);
   const yearlyPayments = filterPaymentsByDateRange(yearStart, yearEnd);
 
+  // Filter membership fee payments for each period (from member records)
+  const dailyMembershipFees = filterMembershipFeesByDateRange(todayStart, todayEnd);
+  const weeklyMembershipFees = filterMembershipFeesByDateRange(weekStart, weekEnd);
+  const monthlyMembershipFees = filterMembershipFeesByDateRange(monthStart, monthEnd);
+  const yearlyMembershipFees = filterMembershipFeesByDateRange(yearStart, yearEnd);
+
   // Calculate totals for each period (including member payments)
-  const calculateTotals = (revenueList, paymentList = []) => {
+  const calculateTotals = (revenueList, monthlyPaymentList = [], membershipFeeList = []) => {
     // Calculate expenses from revenue list
     let expenses = 0;
 
@@ -160,12 +192,11 @@ const RevenueSummary = () => {
       );
     }
 
-    // Separate membership fee payments from monthly payments
-    const membershipFeePayments = paymentList ? paymentList.filter(p => p.membership_fee_paid) : [];
-    const monthlyPayments = paymentList ? paymentList.filter(p => !p.membership_fee_paid) : [];
+    // Monthly payments come from payments table
+    const monthlyPaymentsTotal = monthlyPaymentList.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
     
-    const membershipFeeTotal = membershipFeePayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
-    const monthlyPaymentsTotal = monthlyPayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+    // Membership fees come from member records
+    const membershipFeeTotal = membershipFeeList.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
 
     // Total revenue = (Monthly Payments + Membership Fees) - Expenses
     const totalRevenue = membershipFeeTotal + monthlyPaymentsTotal - expenses;
@@ -178,11 +209,11 @@ const RevenueSummary = () => {
     };
   };
 
-  // Calculate totals for each period (including member payments)
-  const daily = calculateTotals(dailyRevenues, dailyPayments);
-  const weekly = calculateTotals(weeklyRevenues, weeklyPayments);
-  const monthly = calculateTotals(monthlyRevenues, monthlyPayments);
-  const yearly = calculateTotals(yearlyRevenues, yearlyPayments);
+  // Calculate totals for each period (including member payments and membership fees)
+  const daily = calculateTotals(dailyRevenues, dailyPayments, dailyMembershipFees);
+  const weekly = calculateTotals(weeklyRevenues, weeklyPayments, weeklyMembershipFees);
+  const monthly = calculateTotals(monthlyRevenues, monthlyPaymentsFiltered, monthlyMembershipFees);
+  const yearly = calculateTotals(yearlyRevenues, yearlyPayments, yearlyMembershipFees);
 
   // Set active period
   const setPeriod = (period) => setActivePeriod(period);

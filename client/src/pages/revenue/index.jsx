@@ -898,8 +898,8 @@ const RevenuePage = () => {
                         })
                       : revenues.filter(r => new Date(r.date).toISOString().split('T')[0] === today);
 
-                    // Filter member payments based on the same date range
-                    const summaryPayments = showArchive
+                    // Filter monthly payments based on the same date range
+                    const summaryMonthlyPayments = showArchive
                       ? memberPayments.filter(p => {
                           const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
                           const isArchived = paymentDate !== today;
@@ -909,14 +909,24 @@ const RevenuePage = () => {
                         })
                       : memberPayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
 
+                    // Filter membership fee payments based on the same date range
+                    const summaryMembershipFees = showArchive
+                      ? membershipFeePayments.filter(p => {
+                          const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
+                          const isArchived = paymentDate !== today;
+                          const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
+                          const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
+                          return isArchived && afterStart && beforeEnd;
+                        })
+                      : membershipFeePayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
+
                     const revenueTotal = summaryRevenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
                     
-                    // Separate membership fee payments from monthly payments
-                    const membershipFeePayments = summaryPayments.filter(p => p.membership_fee_paid);
-                    const monthlyPayments = summaryPayments.filter(p => !p.membership_fee_paid);
+                    // Monthly payments from payments table
+                    const monthlyPaymentsTotal = summaryMonthlyPayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
                     
-                    const membershipFeeTotal = membershipFeePayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
-                    const monthlyPaymentsTotal = monthlyPayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
+                    // Membership fees from member records
+                    const membershipFeeTotal = summaryMembershipFees.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
                     
                     // Total revenue including all member payments
                     const totalRevenue = revenueTotal + membershipFeeTotal + monthlyPaymentsTotal;
