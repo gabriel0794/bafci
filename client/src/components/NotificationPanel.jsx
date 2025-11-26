@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../contexts/NotificationContext';
+import { apiURL } from '../config/api.config';
 import axios from 'axios';
 
 const NotificationPanel = () => {
@@ -12,7 +13,7 @@ const NotificationPanel = () => {
   const [smsAlert, setSmsAlert] = useState({ show: false, type: '', message: '' });
   const unreadCount = getUnreadCount();
   
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = apiURL;
 
   const getNotificationIcon = (type) => {
     switch (type) {

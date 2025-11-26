@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiURL } from '../../config/api.config';
 import { Category, Error as ErrorIcon, Close } from '@mui/icons-material';
 import { Dialog } from '@headlessui/react';
 
@@ -61,7 +62,7 @@ export default function ProgramsList() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/programs', {
+      const response = await fetch(`${apiURL}/programs`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -85,7 +86,7 @@ export default function ProgramsList() {
   const fetchBranches = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/branches', {
+      const response = await fetch(`${apiURL}/branches`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -172,7 +173,7 @@ export default function ProgramsList() {
         availmentPeriod: bracket.availmentPeriod
       }));
       
-      const response = await fetch('http://localhost:5000/api/programs', {
+      const response = await fetch(`${apiURL}/programs`, {
         method: 'POST',
         headers: { 
           'x-auth-token': token,

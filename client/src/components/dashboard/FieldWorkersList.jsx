@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiURL } from '../../config/api.config';
 import { People, TrendingUp, Error as ErrorIcon, Close } from '@mui/icons-material';
 import { Dialog } from '@headlessui/react';
 
@@ -36,7 +37,7 @@ export default function FieldWorkersList() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/field-workers', {
+      const response = await fetch(`${apiURL}/field-workers`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -60,7 +61,7 @@ export default function FieldWorkersList() {
   const fetchBranches = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/branches', {
+      const response = await fetch(`${apiURL}/branches`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -98,7 +99,7 @@ export default function FieldWorkersList() {
       setSubmitting(true);
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/field-workers', {
+      const response = await fetch(`${apiURL}/field-workers`, {
         method: 'POST',
         headers: { 
           'x-auth-token': token,
@@ -132,7 +133,7 @@ export default function FieldWorkersList() {
       setLoadingMembers(true);
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/members', {
+      const response = await fetch(`${apiURL}/members`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'

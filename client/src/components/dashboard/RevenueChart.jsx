@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { authService } from '../../services/api';
+import { apiURL } from '../../config/api.config';
 
 // Register all ChartJS components
 ChartJS.register(...registerables);
@@ -25,21 +26,21 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
         const token = authService.getAuthToken();
         
         // Fetch revenue data
-        const revenueResponse = await fetch('http://localhost:5000/api/revenue', {
+        const response = await fetch(`${apiURL}/revenue`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
 
-        if (!revenueResponse.ok) {
+        if (!response.ok) {
           throw new Error('Failed to fetch revenue data');
         }
 
-        const revenues = await revenueResponse.json();
+        const revenues = await response.json();
 
         // Fetch member payments
-        const membersResponse = await fetch('http://localhost:5000/api/members', {
+        const membersResponse = await fetch(`${apiURL}/members`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -55,7 +56,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
           for (const member of members) {
             try {
               const paymentResponse = await fetch(
-                `http://localhost:5000/api/payments/history/${member.id}`,
+                `${apiURL}/payments/member/${member.id}`,
                 {
                   headers: {
                     'Authorization': `Bearer ${token}`,

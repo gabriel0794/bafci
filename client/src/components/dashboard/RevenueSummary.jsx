@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { formatCurrency } from '../../utils/format';
 import { authService } from '../../services/api';
+import { apiURL } from '../../config/api.config';
 
 const RevenueSummary = () => {
   // State hooks must be called at the top level
@@ -40,7 +41,7 @@ const RevenueSummary = () => {
         const token = authService.getAuthToken();
         
         // Fetch revenue data
-        const revenueResponse = await fetch('http://localhost:5000/api/revenue', {
+        const revenueResponse = await fetch(`${apiURL}/revenue`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -57,7 +58,7 @@ const RevenueSummary = () => {
         setRevenues(revenueData);
 
         // Fetch member payments
-        const membersResponse = await fetch('http://localhost:5000/api/members', {
+        const membersResponse = await fetch(`${apiURL}/members`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -74,7 +75,7 @@ const RevenueSummary = () => {
           for (const member of members) {
             try {
               const paymentResponse = await fetch(
-                `http://localhost:5000/api/payments/history/${member.id}`,
+                `${apiURL}/payments/member/${member.id}`,
                 {
                   method: 'GET',
                   headers: {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiURL } from '../../config/api.config';
 import {
   Box,
   Button,
@@ -173,7 +174,7 @@ const AddBarangayMembers = () => {
         throw new Error('Authentication token not found. Please log in again.');
       }
 
-      const response = await fetch('http://localhost:5000/api/barangay-members', {
+      const response = await fetch(`${apiURL}/barangay-members`, {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -206,7 +207,7 @@ const AddBarangayMembers = () => {
       throw new Error('Authentication token not found. Please log in again.');
     }
 
-    const response = await fetch('http://localhost:5000/api/barangay-members/adjust', {
+    const response = await fetch(`${apiURL}/barangay-members/adjust`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

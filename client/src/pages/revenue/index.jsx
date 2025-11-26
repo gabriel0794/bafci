@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/api';
+import { apiURL } from '../../config/api.config';
 import Navbar from '../../components/Navbar';
 
 // Confirmation Dialog Component
@@ -147,7 +148,7 @@ const RevenuePage = () => {
       }
 
       // First, fetch all members
-      const membersResponse = await fetch('http://localhost:5000/api/members', {
+      const membersResponse = await fetch(`${apiURL}/members`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +169,7 @@ const RevenuePage = () => {
       for (const member of members) {
         try {
           const paymentResponse = await fetch(
-            `http://localhost:5000/api/payments/history/${member.id}`,
+            `${apiURL}/payments/member/${member.id}`,
             {
               method: 'GET',
               headers: {
@@ -212,7 +213,7 @@ const RevenuePage = () => {
       }
 
       console.log('Fetching revenues from /api/revenue');
-      const response = await fetch('http://localhost:5000/api/revenue', {
+      const response = await fetch(`${apiURL}/revenue`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -295,7 +296,7 @@ const RevenuePage = () => {
         formDataToSend.append('receipt', formData.receipt);
       }
 
-      const response = await fetch('http://localhost:5000/api/revenue', {
+      const response = await fetch(`${apiURL}/revenue`, {
         method: 'POST',
         headers: {
           'x-auth-token': token,

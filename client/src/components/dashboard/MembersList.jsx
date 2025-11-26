@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog } from '@headlessui/react';
 import html2pdf from 'html2pdf.js';
+import { apiURL, baseURL } from '../../config/api.config';
 
 // Format date as MM/DD/YYYY
 const formatDate = (dateString) => {
@@ -65,7 +66,7 @@ export default function MembersList() {
         if (!token) return;
 
         // Fetch recent 5 members for the list
-        const membersRes = await fetch('http://localhost:5000/api/members?limit=5', {
+        const membersRes = await fetch(`${apiURL}/members?limit=5`, {
           headers: { 
             'x-auth-token': token,
             'Content-Type': 'application/json'
@@ -78,7 +79,7 @@ export default function MembersList() {
         setFilteredMembers(membersData);
 
         // Fetch all members to calculate today's count
-        const allMembersRes = await fetch('http://localhost:5000/api/members', {
+        const allMembersRes = await fetch(`${apiURL}/members`, {
           headers: { 
             'x-auth-token': token,
             'Content-Type': 'application/json'

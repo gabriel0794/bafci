@@ -34,6 +34,7 @@ import {
   Error as ErrorIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import { apiURL } from '../../config/api.config';
 
 const Notifications = () => {
   const [overdueMembers, setOverdueMembers] = useState([]);
@@ -44,7 +45,7 @@ const Notifications = () => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', data: null });
   const [smsResults, setSmsResults] = useState([]);
 
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = apiURL;
 
   // Fetch overdue members
   const fetchOverdueMembers = async () => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiURL } from '../../config/api.config';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, CircularProgress, Button } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -18,7 +19,7 @@ const TopBarangays = () => {
           throw new Error('Authentication token not found');
         }
 
-        const response = await fetch('http://localhost:5000/api/barangay-members', {
+        const response = await fetch(`${apiURL}/barangay-members`, {
           headers: {
             'x-auth-token': token,
             'Content-Type': 'application/json'

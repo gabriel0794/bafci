@@ -9,6 +9,7 @@ import {
 import CustomAlert from '../../components/common/CustomAlert';
 import Navbar from '../../components/Navbar';
 import { useNotifications } from '../../contexts/NotificationContext';
+import { apiURL, baseURL } from '../../config/api.config';
 
 const SPECIAL_STATUSES = ['Deceased', 'Void', 'Kicked'];
 const STATUS_VIEW_OPTIONS = ['Active', ...SPECIAL_STATUSES];
@@ -193,7 +194,7 @@ const MembersPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/programs/branch/name/${encodeURIComponent(branchName)}`, {
+      const response = await fetch(`${apiURL}/programs/branch/name/${encodeURIComponent(branchName)}`, {
         headers: { 'x-auth-token': token }
       });
       
@@ -274,7 +275,7 @@ const MembersPage = () => {
   const fetchPaymentPeriods = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/payments/member-periods', {
+      const response = await fetch(`${apiURL}/payments/member-periods`, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -299,7 +300,7 @@ const MembersPage = () => {
       const token = localStorage.getItem('token');
       
       // Fetch members
-      const response = await fetch('http://localhost:5000/api/members', {
+      const response = await fetch(`${apiURL}/members`, {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -324,7 +325,7 @@ const MembersPage = () => {
   const fetchBranches = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/branches', {
+      const response = await fetch(`${apiURL}/branches`, {
         headers: { 'x-auth-token': token }
       });
       if (response.ok) {
@@ -342,7 +343,7 @@ const MembersPage = () => {
   const fetchFieldWorkers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/field-workers', {
+      const response = await fetch(`${apiURL}/field-workers`, {
         headers: { 'x-auth-token': token }
       });
       if (response.ok) {
@@ -541,7 +542,7 @@ const MembersPage = () => {
           throw new Error('No authentication token found. Please log in again.');
         }
 
-        const response = await axios.get('http://localhost:5000/api/members', {
+        const response = await axios.get(`${apiURL}/members`, {
           headers: {
             'x-auth-token': token,
             'Content-Type': 'application/json'
@@ -657,7 +658,7 @@ const MembersPage = () => {
         }
       });
 
-      const url = editing ? `http://localhost:5000/api/members/${currentMember.id}` : 'http://localhost:5000/api/members';
+      const url = editing ? `${apiURL}/members/${currentMember.id}` : `${apiURL}/members`;
       const method = editing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -677,7 +678,7 @@ const MembersPage = () => {
       const savedMember = await response.json();
       
       // Fetch the updated members list to ensure we have all data
-      const membersResponse = await fetch('http://localhost:5000/api/members', {
+      const membersResponse = await fetch(`${apiURL}/members`, {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'application/json'
@@ -720,7 +721,7 @@ const MembersPage = () => {
     setCurrentMember({ ...initialMemberState, ...member });
     if (member.picture) {
       // Construct the full URL for the existing picture
-      setPreviewUrl(`http://localhost:5000/uploads/${member.picture}`);
+      setPreviewUrl(`${baseURL}/uploads/${member.picture}`);
     } else {
       setPreviewUrl('');
     }
@@ -746,7 +747,7 @@ const MembersPage = () => {
       const formData = new FormData();
       formData.append('status', status);
 
-      const response = await fetch(`http://localhost:5000/api/members/${member.id}`, {
+      const response = await fetch(`${apiURL}/members/${member.id}`, {
         method: 'PUT',
         headers: {
           'x-auth-token': token
@@ -795,7 +796,7 @@ const MembersPage = () => {
     setPaymentOpen(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5000/api/payments/history/${member.id}`, {
+      const response = await axios.get(`${apiURL}/payments/history/${member.id}`, {
         headers: { 'x-auth-token': token }
       });
       setPaymentHistory(response.data || []);
@@ -853,7 +854,7 @@ const MembersPage = () => {
       };
       
       // Create the payment record
-      await axios.post('http://localhost:5000/api/payments', paymentPayload, {
+      await axios.post(`${apiURL}/payments`, paymentPayload, {
         headers: { 
           'Content-Type': 'application/json',
           'x-auth-token': token 
@@ -862,7 +863,7 @@ const MembersPage = () => {
 
       // Update the member's last payment date
       await axios.put(
-        `http://localhost:5000/api/members/${viewMember.id}`,
+        `${apiURL}/members/${viewMember.id}`,
         {
           last_payment_date: paymentDate,
           next_payment_date: nextPaymentDate.toISOString().split('T')[0]
@@ -877,7 +878,7 @@ const MembersPage = () => {
 
       // Refresh the payment history
       const historyResponse = await axios.get(
-        `http://localhost:5000/api/payments/history/${viewMember.id}`,
+        `${apiURL}/payments/history/${viewMember.id}`,
         { headers: { 'x-auth-token': token } }
       );
       setPaymentHistory(historyResponse.data);
@@ -932,7 +933,7 @@ const MembersPage = () => {
       // Fetch from API if not in localStorage
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/auth/me', {
+        const response = await fetch(`${apiURL}/auth/me`, {
           headers: { 'x-auth-token': token }
         });
         
@@ -985,7 +986,7 @@ const MembersPage = () => {
     try {
       const token = localStorage.getItem('token');
       // Fetch programs for the member's branch
-      const response = await fetch(`http://localhost:5000/api/programs/branch/name/${encodeURIComponent(member.branch)}`, {
+      const response = await fetch(`${apiURL}/programs/branch/name/${encodeURIComponent(member.branch)}`, {
         headers: { 'x-auth-token': token }
       });
       
@@ -1073,7 +1074,7 @@ const MembersPage = () => {
       formData.append('contribution_amount', upgradeData.newContributionAmount);
       formData.append('availment_period', upgradeData.newAvailmentPeriod);
 
-      const response = await fetch(`http://localhost:5000/api/members/${viewMember.id}`, {
+      const response = await fetch(`${apiURL}/members/${viewMember.id}`, {
         method: 'PUT',
         headers: {
           'x-auth-token': token
@@ -1172,7 +1173,7 @@ const MembersPage = () => {
               </div>
               <div class="photo-box">
                 ${viewMember.picture ? 
-                  `<img src="http://localhost:5000/uploads/${viewMember.picture}" class="photo" alt="Member Photo" />` : 
+                  `<img src="${baseURL}/uploads/${viewMember.picture}" class="photo" alt="Member Photo" />` : 
                   `<div class="photo-placeholder">No Photo<br>Available</div>`
                 }
               </div>
@@ -1711,7 +1712,7 @@ const MembersPage = () => {
                                   {member.picture ? (
                                     <img
                                       className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                      src={`http://localhost:5000/uploads/${member.picture}`}
+                                      src={`${baseURL}/uploads/${member.picture}`}
                                       alt={member.full_name || 'Member'}
                                     />
                                   ) : (
@@ -2637,9 +2638,9 @@ const MembersPage = () => {
                           {viewMember.picture ? (
                             <img
                               className="h-32 w-32 rounded-full border-2 border-gray-300 object-cover cursor-pointer transition-transform hover:scale-105"
-                              src={`http://localhost:5000/uploads/${viewMember.picture}`}
+                              src={`${baseURL}/uploads/${viewMember.picture}`}
                               alt={viewMember.full_name || 'Member'}
-                              onClick={() => setFullscreenImage(`http://localhost:5000/uploads/${viewMember.picture}`)}
+                              onClick={() => setFullscreenImage(`${baseURL}/uploads/${viewMember.picture}`)}
                             />
                           ) : (
                             <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -3071,7 +3072,7 @@ const MembersPage = () => {
                 );
               }
             }}
-            className="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+            className="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-500 focus-visible:outline-offset-2 focus-visible:outline-green-600"
             autoFocus
           >
             Confirm
