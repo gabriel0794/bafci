@@ -36,7 +36,8 @@ const MIGRATION_ORDER = [
   '20251003011800-add-payment-fields-to-members.js',
   '20251003021351-create-payments.js',
   '20251003020000-fix-database-schema.js',
-  '20251111000000-add-late-payment-fields.js'
+  '20251111000000-add-late-payment-fields.js',
+  '20251117000000-add-benefits-to-programs.js'
 ];
 
 async function runMigrations() {

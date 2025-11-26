@@ -11,6 +11,9 @@ export function setupInterceptors() {
     console.log('🌐 URL starts with apiURL?', url.startsWith(apiURL));
     console.log('🌐 URL includes /api/?', url.includes('/api/'));
     
+    // Clone options to avoid modifying the original
+    const clonedOptions = { ...options };
+    
     // Only add auth header for our API calls (check if URL starts with our API URL)
     if (url.startsWith(apiURL) || url.includes('/api/')) {
       const token = authService.getAuthToken();
@@ -18,34 +21,31 @@ export function setupInterceptors() {
       
       // Add the auth header if we have a token
       if (token) {
-        // Initialize options if not exists
-        if (!options) {
-          options = {};
-        }
-        
         // Handle both Headers object and plain object
-        if (options.headers instanceof Headers) {
-          // If it's a Headers object, set the header directly
-          options.headers.set('x-auth-token', token);
+        if (clonedOptions.headers instanceof Headers) {
+          // If it's a Headers object, clone it and set the header
+          const newHeaders = new Headers(clonedOptions.headers);
+          newHeaders.set('x-auth-token', token);
+          clonedOptions.headers = newHeaders;
           console.log('✅ Added x-auth-token to Headers object');
         } else {
           // If it's a plain object or doesn't exist, create/update it
-          options.headers = {
-            ...(options.headers || {}),
+          clonedOptions.headers = {
+            ...(clonedOptions.headers || {}),
             'x-auth-token': token,
           };
           console.log('✅ Added x-auth-token to headers object');
         }
-        console.log('📋 Final headers:', options.headers);
+        console.log('📋 Final headers:', clonedOptions.headers);
       }
     }
 
-    const response = await originalFetch(url, options);
+    const response = await originalFetch(url, clonedOptions);
     
     // Handle 401 Unauthorized responses
     if (response.status === 401) {
       console.error(' 401 Unauthorized response from:', url);
-      console.error('Request headers:', options.headers);
+      console.error('Request headers:', clonedOptions.headers);
       console.error('Token exists:', !!authService.getAuthToken());
       
       // Clear the invalid token
