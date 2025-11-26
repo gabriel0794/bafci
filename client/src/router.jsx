@@ -7,6 +7,7 @@ import { authService } from './services/api';
 import MembersPage from './pages/members/members';
 import AddBarangayMembers from './pages/members/AddBarangayMembers';
 import Layout from './components/Layout';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 
 // Create a protected route component
 const ProtectedRoute = () => {
@@ -40,24 +41,30 @@ const router = createBrowserRouter([
         path: '/signup',
         element: <Signup />,
       },
+      // Routes for Role 1 and 2 only (Admin and Staff)
       {
-        element: <Layout><Outlet /></Layout>,
+        element: <RoleProtectedRoute allowedRoles={[1, 2]} />,
         children: [
           {
-            path: '/dashboard',
-            element: <Dashboard />,
-          },
-          {
-            path: '/revenue',
-            element: <RevenuePage />,
-          },
-          {
-            path: '/members',
-            element: <MembersPage />,
-          },
-          {
-            path: '/add-barangay-members',
-            element: <AddBarangayMembers />,
+            element: <Layout><Outlet /></Layout>,
+            children: [
+              {
+                path: '/dashboard',
+                element: <Dashboard />,
+              },
+              {
+                path: '/revenue',
+                element: <RevenuePage />,
+              },
+              {
+                path: '/members',
+                element: <MembersPage />,
+              },
+              {
+                path: '/add-barangay-members',
+                element: <AddBarangayMembers />,
+              },
+            ],
           },
         ],
       },
