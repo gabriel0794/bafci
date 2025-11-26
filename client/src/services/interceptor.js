@@ -6,16 +6,30 @@ export function setupInterceptors() {
   const originalFetch = window.fetch;
   
   window.fetch = async function (url, options = {}) {
+    console.log('🌐 Interceptor: Fetch called for URL:', url);
+    console.log('🌐 apiURL:', apiURL);
+    console.log('🌐 URL starts with apiURL?', url.startsWith(apiURL));
+    console.log('🌐 URL includes /api/?', url.includes('/api/'));
+    
     // Only add auth header for our API calls (check if URL starts with our API URL)
     if (url.startsWith(apiURL) || url.includes('/api/')) {
       const token = authService.getAuthToken();
+      console.log('🔐 Token retrieved:', token ? 'EXISTS' : 'MISSING');
       
       // Add the auth header if we have a token
       if (token) {
+        // Ensure options.headers exists
+        if (!options.headers) {
+          options.headers = {};
+        }
+        
+        // Create a new Headers object or plain object
         options.headers = {
           ...options.headers,
           'x-auth-token': token,
         };
+        console.log('✅ Added x-auth-token to headers');
+        console.log('📋 Final headers:', options.headers);
       }
     }
 
