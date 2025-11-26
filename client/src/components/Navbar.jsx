@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../services/api';
 import NotificationPanel from './NotificationPanel';
 
@@ -81,22 +81,22 @@ export default function Navbar({ activePage }) {
       } lg:translate-x-0`}>
         {/* Logo/Brand Section */}
         <div className="flex items-center justify-center h-20 border-b border-gray-200 bg-gradient-to-r from-green-600 to-green-700">
-          <a href="/dashboard" className="text-3xl font-bold text-white tracking-wide">
+          <Link to="/dashboard" className="text-3xl font-bold text-white tracking-wide">
             BAFCI
-          </a>
+          </Link>
         </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navigationItems.map((item) => (
-            <a
+            <Link
               key={item.page}
-              href={item.href}
+              to={item.href}
               onClick={closeSidebar}
               className={`${isActive(item.page)} flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200`}
             >
               <span>{item.name}</span>
-            </a>
+            </Link>
           ))}
         </nav>
 
