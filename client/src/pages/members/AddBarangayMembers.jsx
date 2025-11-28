@@ -75,11 +75,14 @@ const AddBarangayMembers = () => {
     const fetchRegions = async () => {
       try {
         setLoadingRegions(true);
-        const response = await fetch('https://psgc.gitlab.io/api/regions/');
+        const response = await fetch(`${apiURL}/psgc/regions`);
         const data = await response.json();
-        setRegions(data);
+        // Sort regions alphabetically by name
+        const sortedData = Array.isArray(data) ? data.sort((a, b) => a.name.localeCompare(b.name)) : [];
+        setRegions(sortedData);
       } catch (error) {
         console.error('Error fetching regions:', error);
+        setRegions([]);
       } finally {
         setLoadingRegions(false);
       }
@@ -103,11 +106,12 @@ const AddBarangayMembers = () => {
     const fetchProvinces = async () => {
       try {
         setLoadingProvinces(true);
-        const response = await fetch(`https://psgc.gitlab.io/api/regions/${region}/provinces/`);
+        const response = await fetch(`${apiURL}/psgc/regions/${region}/provinces`);
         const data = await response.json();
-        setProvinces(data);
+        setProvinces(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching provinces:', error);
+        setProvinces([]);
       } finally {
         setLoadingProvinces(false);
       }
@@ -129,11 +133,12 @@ const AddBarangayMembers = () => {
     const fetchCities = async () => {
       try {
         setLoadingCities(true);
-        const response = await fetch(`https://psgc.gitlab.io/api/provinces/${province}/cities-municipalities/`);
+        const response = await fetch(`${apiURL}/psgc/provinces/${province}/cities-municipalities`);
         const data = await response.json();
-        setCities(data);
+        setCities(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching cities:', error);
+        setCities([]);
       } finally {
         setLoadingCities(false);
       }
@@ -153,11 +158,12 @@ const AddBarangayMembers = () => {
     const fetchBarangays = async () => {
       try {
         setLoadingBarangays(true);
-        const response = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city}/barangays/`);
+        const response = await fetch(`${apiURL}/psgc/cities-municipalities/${city}/barangays`);
         const data = await response.json();
-        setBarangays(data);
+        setBarangays(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching barangays:', error);
+        setBarangays([]);
       } finally {
         setLoadingBarangays(false);
       }
