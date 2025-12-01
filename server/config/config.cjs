@@ -23,7 +23,13 @@ module.exports = {
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'bafci',
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 6969, // Using port from .env or default to 6969
-    dialect: 'postgres'
+    port: parseInt(process.env.DB_PORT) || 5432,
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    }
   }
 };

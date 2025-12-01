@@ -338,7 +338,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
       backgroundColor: 'rgba(16, 185, 129, 0.1)',
       borderWidth: 2,
       fill: true,
-      tension: 0.4,
+      tension: 0,
       pointRadius: 0,
       pointHoverRadius: 6,
       pointHoverBackgroundColor: '#10B981',
@@ -347,35 +347,20 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     }]
   });
   
-  // Generate sample data for demo purposes
+  // Generate empty data with flat line at 0 when no revenue exists
   const generateSampleData = () => {
-    const sampleData = [];
+    const labels = [];
+    const values = [];
     const today = new Date();
     
-    // Generate 7 days of sample data with larger values
+    // Generate 7 days of labels with 0 values (flat line)
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
-      
-      // Generate random values between 100,000 and 1,000,000
-      sampleData.push({
-        date: date.toISOString().split('T')[0],
-        amount: Math.floor(Math.random() * 900000) + 100000
-      });
+      labels.push(date.toLocaleDateString());
+      values.push(0);
     }
-    return formatChartData(Object.keys(groupedSampleData(sampleData)), Object.values(groupedSampleData(sampleData)));
-  };
-
-  const groupedSampleData = (data) => {
-    const groupedData = {};
-    data.forEach(item => {
-      const date = new Date(item.date).toLocaleDateString();
-      if (!groupedData[date]) {
-        groupedData[date] = 0;
-      }
-      groupedData[date] += parseFloat(item.amount);
-    });
-    return groupedData;
+    return formatChartData(labels, values);
   };
 
 
@@ -471,6 +456,8 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
         }
       },
       y: {
+        beginAtZero: true,
+        min: 0,
         grid: {
           color: 'rgba(75, 85, 99, 0.15)',
           drawBorder: false,
@@ -504,7 +491,7 @@ const RevenueChart = ({ timeRange, onTimeRangeChange }) => {
     elements: {
       line: {
         borderWidth: 2.5,
-        tension: 0.4,
+        tension: 0,
         fill: true,
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
