@@ -286,6 +286,12 @@ export default function FieldWorkersList() {
                       <p className="text-[11px] text-gray-500 mt-0.5">
                         Age: {worker.age} • Branch: {getBranchName(worker)}
                       </p>
+                      <p className="text-[11px] text-green-600 font-medium mt-0.5">
+                        Total Collection: ₱{(
+                          parseFloat(worker.totalMembershipFeeCollection || worker.total_membership_fee_collection || 0) + 
+                          parseFloat(worker.totalMonthlyPaymentCollection || worker.total_monthly_payment_collection || 0)
+                        ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </p>
                     </div>
                   </div>
 
@@ -433,6 +439,14 @@ export default function FieldWorkersList() {
                       <p className="text-sm text-gray-500">
                         Age: {selectedWorker.age} • Branch: {getBranchName(selectedWorker)}
                       </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-blue-600 font-medium">
+                          Membership: ₱{parseFloat(selectedWorker.totalMembershipFeeCollection || selectedWorker.total_membership_fee_collection || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                        </span>
+                        <span className="text-xs text-purple-600 font-medium">
+                          Monthly: ₱{parseFloat(selectedWorker.totalMonthlyPaymentCollection || selectedWorker.total_monthly_payment_collection || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </>
                 )}

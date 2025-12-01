@@ -101,6 +101,8 @@ const RevenuePage = () => {
     branchId: '',
     receipt: null
   });
+  const [selectedExpense, setSelectedExpense] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -584,6 +586,176 @@ const RevenuePage = () => {
         </div>
       )}
 
+      {/* Receipt Viewer Modal */}
+      {showReceiptModal && selectedExpense && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div>
+                <h2 className="text-lg font-medium text-gray-900">Expense Details</h2>
+                <p className="text-sm text-gray-500">View expense information and receipt</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowReceiptModal(false);
+                  setSelectedExpense(null);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* Expense Info */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-500 uppercase font-medium">Date</p>
+                  <p className="text-sm font-semibold text-gray-900">{formatDate(selectedExpense.date)}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-500 uppercase font-medium">Amount</p>
+                  <p className="text-sm font-semibold text-red-600">{formatCurrency(Math.abs(selectedExpense.amount))}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-500 uppercase font-medium">Category</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {selectedExpense.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-500 uppercase font-medium">Description</p>
+                  <p className="text-sm font-semibold text-gray-900">{selectedExpense.description}</p>
+                </div>
+              </div>
+
+              {/* Receipt Image */}
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Receipt</h3>
+                {selectedExpense.receipt ? (
+                  <div className="bg-gray-100 rounded-lg p-4">
+                    <img 
+                      src={`${apiURL.replace('/api', '')}/${selectedExpense.receipt}`}
+                      alt="Expense Receipt"
+                      className="max-w-full h-auto rounded-lg shadow-md mx-auto cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(`${apiURL.replace('/api', '')}/${selectedExpense.receipt}`, '_blank')}
+                    />
+                    <p className="text-xs text-gray-500 text-center mt-2">Click image to view full size</p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 rounded-lg p-8 text-center">
+                    <svg className="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-sm text-gray-500">No receipt uploaded for this expense</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => {
+                  setShowReceiptModal(false);
+                  setSelectedExpense(null);
+                }}
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 border  rounded-md hover:bg-green-700 focus:outline-none cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Total Revenue Summary - At the Top */}
+      <div className="mb-6">
+        <div className="bg-gradient-to-r from-green-600 to-green-700 shadow-lg rounded-lg p-6">
+          {(() => {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Filter monthly payments based on date range
+            const summaryMonthlyPayments = showArchive
+              ? memberPayments.filter(p => {
+                  const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
+                  const isArchived = paymentDate !== today;
+                  const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
+                  const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
+                  return isArchived && afterStart && beforeEnd;
+                })
+              : memberPayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
+
+            // Filter membership fee payments based on date range
+            const summaryMembershipFees = showArchive
+              ? membershipFeePayments.filter(p => {
+                  const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
+                  const isArchived = paymentDate !== today;
+                  const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
+                  const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
+                  return isArchived && afterStart && beforeEnd;
+                })
+              : membershipFeePayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
+
+            // Filter expenses based on date range
+            const summaryExpenses = showArchive
+              ? revenues.filter(r => {
+                  const entryDate = new Date(r.date).toISOString().split('T')[0];
+                  const isArchived = entryDate !== today;
+                  const afterStart = !archiveStartDate || entryDate >= archiveStartDate;
+                  const beforeEnd = !archiveEndDate || entryDate <= archiveEndDate;
+                  return isArchived && afterStart && beforeEnd;
+                })
+              : revenues.filter(r => new Date(r.date).toISOString().split('T')[0] === today);
+
+            // Monthly payments total (using total_amount which includes late fees)
+            const monthlyPaymentsTotal = summaryMonthlyPayments.reduce((sum, p) => 
+              sum + parseFloat(p.total_amount || p.totalAmount || p.amount || 0), 0);
+            
+            // Membership fees total
+            const membershipFeeTotal = summaryMembershipFees.reduce((sum, p) => 
+              sum + parseFloat(p.amount || 0), 0);
+            
+            // Expenses total
+            const expensesTotal = summaryExpenses.reduce((sum, r) => 
+              sum + Math.abs(parseFloat(r.amount || 0)), 0);
+            
+            // Gross revenue (before expenses)
+            const grossRevenue = monthlyPaymentsTotal + membershipFeeTotal;
+            
+            // Net revenue (after expenses)
+            const netRevenue = grossRevenue - expensesTotal;
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-green-100 text-sm font-medium">Monthly Payments</p>
+                  <p className="text-white text-2xl font-bold">{formatCurrency(monthlyPaymentsTotal)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-green-100 text-sm font-medium">Membership Fees</p>
+                  <p className="text-white text-2xl font-bold">{formatCurrency(membershipFeeTotal)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-red-200 text-sm font-medium">Expenses</p>
+                  <p className="text-red-100 text-2xl font-bold">-{formatCurrency(expensesTotal)}</p>
+                </div>
+                <div className="text-center bg-white/20 rounded-lg p-3">
+                  <p className="text-green-100 text-sm font-medium">Net Revenue</p>
+                  <p className={`text-3xl font-bold ${netRevenue >= 0 ? 'text-white' : 'text-red-200'}`}>
+                    {formatCurrency(netRevenue)}
+                  </p>
+                  <p className="text-green-200 text-xs mt-1">
+                    {showArchive ? 'Selected Date Range' : 'Today'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* Lists Stacked Vertically */}
       <div className="space-y-6">
         {/* Monthly Payments List */}
@@ -635,8 +807,10 @@ const RevenuePage = () => {
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reference No.</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Late Fee</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -657,7 +831,7 @@ const RevenuePage = () => {
                           return paymentDate === today;
                         });
 
-                    const total = filteredPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                    const total = filteredPayments.reduce((sum, p) => sum + parseFloat(p.total_amount || p.totalAmount || p.amount || 0), 0);
                     
                     // Pagination
                     const startIndex = (monthlyPaymentsPage - 1) * itemsPerPage;
@@ -667,26 +841,41 @@ const RevenuePage = () => {
                     return (
                       <>
                         {paginatedPayments.length > 0 ? (
-                          paginatedPayments.map((payment) => (
-                            <tr key={`mp-${payment.id}`} className="hover:bg-blue-50">
-                              <td className="px-3 py-2 text-xs text-gray-500">{formatDate(payment.payment_date)}</td>
-                              <td className="px-3 py-2 text-xs text-gray-900">{payment.member_name}</td>
-                              <td className="px-3 py-2 text-xs text-gray-500">{payment.notes || '-'}</td>
-                              <td className="px-3 py-2 text-right text-xs font-medium text-blue-600">
-                                {formatCurrency(payment.amount)}
-                              </td>
-                            </tr>
-                          ))
+                          paginatedPayments.map((payment) => {
+                            const isLate = payment.is_late || payment.isLate;
+                            const lateFeePercentage = payment.late_fee_percentage || payment.lateFeePercentage || 0;
+                            const totalAmount = payment.total_amount || payment.totalAmount || payment.amount || 0;
+                            return (
+                              <tr key={`mp-${payment.id}`} className="hover:bg-blue-50">
+                                <td className="px-3 py-2 text-xs text-gray-500">{formatDate(payment.payment_date)}</td>
+                                <td className="px-3 py-2 text-xs text-gray-900">{payment.member_name}</td>
+                                <td className="px-3 py-2 text-xs text-gray-500">{payment.reference_number || payment.referenceNumber || '-'}</td>
+                                <td className="px-3 py-2 text-right text-xs font-medium text-blue-600">
+                                  {formatCurrency(payment.amount)}
+                                </td>
+                                <td className="px-3 py-2 text-center text-xs">
+                                  {isLate ? (
+                                    <span className="text-red-600 font-medium">{lateFeePercentage}%</span>
+                                  ) : (
+                                    <span className="text-green-600">On-time</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-right text-xs font-bold text-gray-900">
+                                  {formatCurrency(totalAmount)}
+                                </td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
-                            <td colSpan="4" className="px-3 py-4 text-center text-xs text-gray-500">
+                            <td colSpan="6" className="px-3 py-4 text-center text-xs text-gray-500">
                               {showArchive ? 'No monthly payments in selected date range' : 'No monthly payments today'}
                             </td>
                           </tr>
                         )}
                         {filteredPayments.length > 0 && (
                           <tr className="bg-blue-100 font-semibold">
-                            <td colSpan="3" className="px-3 py-2 text-xs text-gray-900">Total (All Pages)</td>
+                            <td colSpan="5" className="px-3 py-2 text-xs text-gray-900">Total (All Pages)</td>
                             <td className="px-3 py-2 text-right text-xs font-bold text-blue-700">
                               {formatCurrency(total)}
                             </td>
@@ -814,6 +1003,7 @@ const RevenuePage = () => {
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Receipt</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -835,7 +1025,14 @@ const RevenuePage = () => {
                       <>
                         {paginatedExpenses.length > 0 ? (
                           paginatedExpenses.map((expense) => (
-                            <tr key={`exp-${expense.id}`} className="hover:bg-red-50">
+                            <tr 
+                              key={`exp-${expense.id}`} 
+                              className="hover:bg-red-50 cursor-pointer transition-colors"
+                              onClick={() => {
+                                setSelectedExpense(expense);
+                                setShowReceiptModal(true);
+                              }}
+                            >
                               <td className="px-3 py-2 text-xs text-gray-500">{formatDate(expense.date)}</td>
                               <td className="px-3 py-2 text-xs text-gray-900">{expense.description}</td>
                               <td className="px-3 py-2 text-xs text-gray-500">
@@ -844,18 +1041,30 @@ const RevenuePage = () => {
                               <td className="px-3 py-2 text-right text-xs font-medium text-red-600">
                                 {formatCurrency(Math.abs(expense.amount))}
                               </td>
+                              <td className="px-3 py-2 text-center">
+                                {expense.receipt ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Receipt
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400">No receipt</span>
+                                )}
+                              </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="4" className="px-3 py-4 text-center text-xs text-gray-500">
+                            <td colSpan="5" className="px-3 py-4 text-center text-xs text-gray-500">
                               No expenses today
                             </td>
                           </tr>
                         )}
                         {todayExpenses.length > 0 && (
                           <tr className="bg-red-100 font-semibold">
-                            <td colSpan="3" className="px-3 py-2 text-xs text-gray-900">Total (All Pages)</td>
+                            <td colSpan="4" className="px-3 py-2 text-xs text-gray-900">Total (All Pages)</td>
                             <td className="px-3 py-2 text-right text-xs font-bold text-red-700">
                               {formatCurrency(total)}
                             </td>
@@ -880,73 +1089,7 @@ const RevenuePage = () => {
           </div>
         </div>
       </div>
-
-      {/* Unified Summary Card - Full Width */}
-      <div className="mt-6">
-        <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Summary for this View</h3>
-              <div className="flex justify-center">
-                {(() => {
-                    const today = new Date().toISOString().split('T')[0];
-                    const summaryRevenues = showArchive
-                      ? revenues.filter(r => {
-                          const entryDate = new Date(r.date).toISOString().split('T')[0];
-                          const isArchived = entryDate !== today;
-                          const afterStart = !archiveStartDate || entryDate >= archiveStartDate;
-                          const beforeEnd = !archiveEndDate || entryDate <= archiveEndDate;
-                          return isArchived && afterStart && beforeEnd;
-                        })
-                      : revenues.filter(r => new Date(r.date).toISOString().split('T')[0] === today);
-
-                    // Filter monthly payments based on the same date range
-                    const summaryMonthlyPayments = showArchive
-                      ? memberPayments.filter(p => {
-                          const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
-                          const isArchived = paymentDate !== today;
-                          const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
-                          const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
-                          return isArchived && afterStart && beforeEnd;
-                        })
-                      : memberPayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
-
-                    // Filter membership fee payments based on the same date range
-                    const summaryMembershipFees = showArchive
-                      ? membershipFeePayments.filter(p => {
-                          const paymentDate = new Date(p.payment_date).toISOString().split('T')[0];
-                          const isArchived = paymentDate !== today;
-                          const afterStart = !archiveStartDate || paymentDate >= archiveStartDate;
-                          const beforeEnd = !archiveEndDate || paymentDate <= archiveEndDate;
-                          return isArchived && afterStart && beforeEnd;
-                        })
-                      : membershipFeePayments.filter(p => new Date(p.payment_date).toISOString().split('T')[0] === today);
-
-                    const revenueTotal = summaryRevenues.reduce((sum, rev) => sum + parseFloat(rev.amount), 0);
-                    
-                    // Monthly payments from payments table
-                    const monthlyPaymentsTotal = summaryMonthlyPayments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
-                    
-                    // Membership fees from member records
-                    const membershipFeeTotal = summaryMembershipFees.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0);
-                    
-                    // Total revenue including all member payments
-                    const totalRevenue = revenueTotal + membershipFeeTotal + monthlyPaymentsTotal;
-
-                    return (
-                      <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-green-200">
-                        <div className="text-base font-medium text-gray-500">Total Revenue</div>
-                        <div className="mt-2 text-4xl font-bold text-green-600">
-                          {formatCurrency(totalRevenue)}
-                        </div>
-                        <div className="mt-2 text-sm text-gray-400">
-                          All revenue sources combined
-                        </div>
-                      </div>
-                    );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
       </div>
     </div>
   );

@@ -817,7 +817,8 @@ const MembersPage = () => {
       amount: '',
       payment_date: new Date().toISOString().split('T')[0],
       reference_number: '',
-      notes: ''
+      notes: '',
+      late_fee_percentage: '15'
     });
   };
 
@@ -845,12 +846,21 @@ const MembersPage = () => {
       const nextPaymentDate = new Date(paymentDate);
       nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
       
+      // Calculate total amount with late fee
+      const baseAmount = parseFloat(newPayment.amount);
+      const paymentDay = new Date(paymentDate).getDate();
+      const isLate = paymentDay > 5;
+      const lateFeePercentage = parseFloat(newPayment.late_fee_percentage) || 15;
+      const lateFeeAmount = isLate ? (baseAmount * lateFeePercentage) / 100 : 0;
+      const totalAmount = baseAmount + lateFeeAmount;
+
       const paymentPayload = {
         member_id: viewMember.id,
-        amount: parseFloat(newPayment.amount),
+        amount: baseAmount,
         payment_date: paymentDate,
         reference_number: newPayment.reference_number,
-        notes: newPayment.notes
+        notes: newPayment.notes,
+        late_fee_percentage: newPayment.late_fee_percentage
       };
       
       // Create the payment record
@@ -894,7 +904,7 @@ const MembersPage = () => {
       handlePaymentClose();
       showAlert(
         'Payment Successful',
-        `Payment of ₱${Number(newPayment.amount).toFixed(2)} has been recorded for ${viewMember.full_name || 'the member'}.`,
+        `Payment of ₱${totalAmount.toFixed(2)} has been recorded for ${viewMember.full_name || 'the member'}.${isLate ? ` (includes ${lateFeePercentage}% late fee)` : ''}`,
         'success'
       );
 
@@ -2916,7 +2926,7 @@ const MembersPage = () => {
                                 <div className="flex items-center justify-between py-2">
                                   <span className="text-sm font-medium text-gray-600">Total Amount Paid:</span>
                                   <span className="text-lg font-bold text-green-600">
-                                    ₱{paymentHistory.reduce((sum, payment) => sum + Number(payment.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    ₱{paymentHistory.reduce((sum, payment) => sum + Number(payment.totalAmount || payment.total_amount || payment.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                   </span>
                                 </div>
                                 
@@ -2954,24 +2964,42 @@ const MembersPage = () => {
                                             Amount
                                           </th>
                                           <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Reference
+                                            Late Fee
+                                          </th>
+                                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Total
                                           </th>
                                         </tr>
                                       </thead>
                                       <tbody className="bg-white divide-y divide-gray-200">
-                                        {paymentHistory.map((payment, index) => (
-                                          <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                              {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                              {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                              {payment.reference_number || '—'}
-                                            </td>
-                                          </tr>
-                                        ))}
+                                        {paymentHistory.map((payment, index) => {
+                                          const isLate = payment.isLate || payment.is_late;
+                                          const lateFeePercentage = payment.lateFeePercentage || payment.late_fee_percentage || 0;
+                                          const lateFeeAmount = payment.lateFeeAmount || payment.late_fee_amount || 0;
+                                          const totalAmount = payment.totalAmount || payment.total_amount || payment.amount || 0;
+                                          return (
+                                            <tr key={`payment-${payment.id || 'no-id'}-${payment.payment_date || index}`}>
+                                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
+                                              </td>
+                                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                {payment.amount ? `₱${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A'}
+                                              </td>
+                                              <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                                {isLate ? (
+                                                  <span className="text-red-600">
+                                                    {lateFeePercentage}% (₱{Number(lateFeeAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })})
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-green-600">On-time</span>
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                ₱{Number(totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>

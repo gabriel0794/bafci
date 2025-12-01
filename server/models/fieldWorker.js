@@ -29,6 +29,16 @@ FieldWorker.init({
     defaultValue: 0,
     field: 'member_count'
   },
+  totalMembershipFeeCollection: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    field: 'total_membership_fee_collection'
+  },
+  totalMonthlyPaymentCollection: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    field: 'total_monthly_payment_collection'
+  },
   createdAt: {
     type: DataTypes.DATE,
     field: 'created_at',

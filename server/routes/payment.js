@@ -2,7 +2,7 @@ import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 
-const { Payment, Member, sequelize } = models;
+const { Payment, Member, FieldWorker, sequelize } = models;
 const router = express.Router();
 
 // Get payment history for a specific member (payment history modal)
@@ -80,15 +80,14 @@ router.post('/', auth, async (req, res) => {
     const isLate = dayOfMonth > 5;
     
     // Calculate late fee if payment is late
-    // Use custom late fee percentage from request, or default to 10%
-    const customLateFeePercentage = late_fee_percentage ? parseFloat(late_fee_percentage) : null;
-    const LATE_FEE_PERCENTAGE = isLate && customLateFeePercentage ? customLateFeePercentage : 10;
+    // Use custom late fee percentage from request, or default to 15%
+    const lateFeePercentage = late_fee_percentage ? parseFloat(late_fee_percentage) : 15;
     const baseAmount = parseFloat(amount);
     let lateFeeAmount = 0;
     let totalAmount = baseAmount;
     
     if (isLate) {
-      lateFeeAmount = (baseAmount * LATE_FEE_PERCENTAGE) / 100;
+      lateFeeAmount = (baseAmount * lateFeePercentage) / 100;
       totalAmount = baseAmount + lateFeeAmount;
     }
 
@@ -105,7 +104,7 @@ router.post('/', auth, async (req, res) => {
         status: 'completed',
         createdBy: req.user.id,
         isLate: isLate,
-        lateFeePercentage: isLate ? LATE_FEE_PERCENTAGE : 0,
+        lateFeePercentage: isLate ? lateFeePercentage : 0,
         lateFeeAmount: lateFeeAmount,
         totalAmount: totalAmount
       });
@@ -114,6 +113,17 @@ router.post('/', auth, async (req, res) => {
       await member.update({
         lastContributionDate: formattedPaymentDate
       });
+
+      // Update field worker's total monthly payment collection if member has a field worker
+      if (member.fieldWorkerId) {
+        const fieldWorker = await FieldWorker.findByPk(member.fieldWorkerId);
+        if (fieldWorker) {
+          const currentTotal = parseFloat(fieldWorker.totalMonthlyPaymentCollection) || 0;
+          await fieldWorker.update({
+            totalMonthlyPaymentCollection: currentTotal + totalAmount
+          });
+        }
+      }
 
       res.status(201).json({
         message: 'Payment recorded successfully',

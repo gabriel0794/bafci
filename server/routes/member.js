@@ -105,6 +105,18 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
       updatedBy: userId
     });
 
+    // Update field worker's total membership fee collection if member has a field worker and membership fee is paid
+    if (member.fieldWorkerId && member.membershipFeePaid) {
+      const fieldWorker = await FieldWorker.findByPk(member.fieldWorkerId);
+      if (fieldWorker) {
+        const membershipFeeAmount = parseFloat(member.membershipFeeAmount) || 600;
+        const currentTotal = parseFloat(fieldWorker.totalMembershipFeeCollection) || 0;
+        await fieldWorker.update({
+          totalMembershipFeeCollection: currentTotal + membershipFeeAmount
+        });
+      }
+    }
+
     res.status(201).json(member);
   } catch (error) {
     console.error('Error creating member:', error);
