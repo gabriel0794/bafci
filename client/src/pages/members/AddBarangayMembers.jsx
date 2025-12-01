@@ -54,6 +54,9 @@ const AddBarangayMembers = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9; // 3x3 grid
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [alertState, setAlertState] = useState({
     open: false,
@@ -309,10 +312,22 @@ const AddBarangayMembers = () => {
   };
 
   // Pagination logic
-  const totalPages = Math.ceil(barangayMembers.length / itemsPerPage);
+  // Filter barangay members based on search query
+  const filteredMembers = barangayMembers.filter(entry => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      entry.barangayName?.toLowerCase().includes(query) ||
+      entry.cityName?.toLowerCase().includes(query) ||
+      entry.provinceName?.toLowerCase().includes(query) ||
+      entry.regionName?.toLowerCase().includes(query)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredMembers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPageMembers = barangayMembers.slice(startIndex, endIndex);
+  const currentPageMembers = filteredMembers.slice(startIndex, endIndex);
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
@@ -478,15 +493,37 @@ const AddBarangayMembers = () => {
         <Box flex={1}>
           <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={2} gap={1.5}>
             <Typography variant="h6" fontWeight={600}>Barangay Member List</Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<RefreshIcon />}
-              onClick={fetchBarangayMembers}
-              disabled={loadingBarangayMembers}
-            >
-              Refresh
-            </Button>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <TextField
+                size="small"
+                placeholder="Search barangay..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1); // Reset to first page on search
+                }}
+                sx={{ width: { xs: '100%', sm: 200 } }}
+                InputProps={{
+                  startAdornment: (
+                    <Box component="span" sx={{ color: 'text.secondary', mr: 1, display: 'flex' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35" />
+                      </svg>
+                    </Box>
+                  ),
+                }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={fetchBarangayMembers}
+                disabled={loadingBarangayMembers}
+                sx={{ minWidth: 'auto', p: 1 }}
+              >
+                <RefreshIcon />
+              </Button>
+            </Stack>
           </Stack>
           {loadingBarangayMembers ? (
             <Box display="flex" justifyContent="center" alignItems="center" py={6}>
@@ -496,6 +533,12 @@ const AddBarangayMembers = () => {
             <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="body1" color="text.secondary">
                 No barangay member records yet. Use the form to add members.
+              </Typography>
+            </Paper>
+          ) : filteredMembers.length === 0 ? (
+            <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                No barangays found matching "{searchQuery}"
               </Typography>
             </Paper>
           ) : (

@@ -144,42 +144,33 @@ export default function Navbar({ activePage }) {
 
   return (
     <>
-      {/* Mobile Swipe Arrow Indicator - Only visible when sidebar is closed */}
-      <div
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsSidebarOpen(true);
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsSidebarOpen(true);
-        }}
-        className={`lg:hidden fixed top-4 left-0 z-50 cursor-pointer transition-opacity duration-300 ${
-          isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-        aria-label="Tap to open menu"
-      >
-        <div className="flex items-center animate-pulse">
-          <div className="bg-green-600 py-2 px-1 shadow-lg" style={{ borderRadius: '0 10px 10px 0' }}>
-            <svg
-              className="w-3 h-3 text-white"
-              fill="none"
+      {/* Topbar (desktop & mobile) */}
+      <div className="fixed top-0 left-0 right-0 h-14 bg-white shadow-sm z-20 flex items-center justify-between px-3 sm:px-6 border-b border-gray-100 lg:left-64">
+        
+        {/* Burger menu for mobile */}
+        <button
+          type="button"
+          onClick={() => setIsSidebarOpen(true)}
+          className="lg:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none"
+          aria-label="Open menu"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="3"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* Topbar (desktop & mobile) */}
-      <div className="fixed top-0 left-0 right-0 h-14 bg-white shadow-sm z-20 flex items-center justify-end px-3 sm:px-6 border-b border-gray-100 lg:left-64">
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+        
+        {/* Empty div for desktop to maintain layout */}
+        <div className="hidden lg:block"></div>
 
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Notification bell */}
@@ -325,19 +316,6 @@ export default function Navbar({ activePage }) {
             </Link>
           ))}
         </nav>
-
-        {/* Notification Panel */}
-        <NotificationPanel />
-
-        {/* Bottom Section - Logout */}
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-          >
-            Sign out
-          </button>
-        </div>
       </div>
 
       {/* Logout Confirmation Dialog */}
