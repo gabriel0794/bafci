@@ -55,32 +55,29 @@ export default function Dashboard() {
         <div className="max-w-[99%] mx-auto">
           <header className="mb-6 px-2 sm:px-4">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Welcome back, {userData?.name}!
+               Dashboard
             </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Here's what's happening with your business today
-            </p>
           </header>
 
           <main className="space-y-4 sm:space-y-6">
-            {/* Revenue Overview and Chart - Side by Side */}
-            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-              {/* Revenue Overview and Top Barangays - Combined Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 w-full lg:w-1/3 h-[450px] flex flex-col">
-                <div className="flex-shrink-0">
-                  <RevenueSummary />
-                </div>
-                <div className="border-t border-gray-200 mt-3 pt-3 flex-shrink-0">
-                  <TopBarangays />
-                </div>
-              </div>
+            {/* Revenue Summary - Full Width at Top */}
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+              <RevenueSummary />
+            </div>
 
-              {/* Revenue Chart - Separate Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 h-[450px] w-full lg:w-2/3">
+            {/* Revenue Chart and Top Barangays - Side by Side */}
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+              {/* Revenue Chart - Left Side (3/4 width) */}
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 h-[400px] w-full lg:w-3/4">
                 <RevenueChart 
                   timeRange={timeRange}
                   onTimeRangeChange={setTimeRange}
                 />
+              </div>
+
+              {/* Top Barangays - Right Side (1/4 width) */}
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 h-[400px] w-full lg:w-1/4">
+                <TopBarangays listStyle={true} />
               </div>
             </div>
             

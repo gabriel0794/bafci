@@ -5,7 +5,7 @@ import axios from 'axios';
 
 const NotificationPanel = () => {
   const { notifications, markAsRead, markAllAsRead, clearNotification, getUnreadCount } = useNotifications();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [showSMSPanel, setShowSMSPanel] = useState(false);
   const [overdueMembers, setOverdueMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -165,36 +165,9 @@ const NotificationPanel = () => {
   const recentNotifications = notifications.slice(0, 5);
 
   return (
-    <div className="border-t border-gray-200">
-      {/* Notification Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center space-x-2">
-          <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <span className="text-sm font-medium text-gray-700">Notifications</span>
-          {unreadCount > 0 && (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-              {unreadCount}
-            </span>
-          )}
-        </div>
-        <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {/* Notification Panel Content */}
-      {isExpanded && (
-        <div className="bg-gray-50">
+    <div>
+      {/* Notification Panel Content - Always visible */}
+      <div className="bg-white">
           {/* Tabs */}
           <div className="flex border-b border-gray-200">
             <button
@@ -395,7 +368,6 @@ const NotificationPanel = () => {
             </div>
           )}
         </div>
-      )}
     </div>
   );
 };

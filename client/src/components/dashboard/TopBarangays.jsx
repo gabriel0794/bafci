@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography, CircularProgress, Button } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-const TopBarangays = () => {
+const TopBarangays = ({ listStyle = false }) => {
   const [topBarangays, setTopBarangays] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -31,8 +31,8 @@ const TopBarangays = () => {
         }
 
         const data = await response.json();
-        // Take only top 3 (already sorted by member count DESC from backend)
-        setTopBarangays(data.slice(0, 3));
+        // Take top 5 for list style, top 3 for card style (already sorted by member count DESC from backend)
+        setTopBarangays(listStyle ? data.slice(0, 5) : data.slice(0, 3));
       } catch (error) {
         console.error('Error fetching top barangays:', error);
       } finally {
@@ -41,7 +41,7 @@ const TopBarangays = () => {
     };
 
     fetchTopBarangays();
-  }, []);
+  }, [listStyle]);
 
   const handleSeeAll = () => {
     navigate('/add-barangay-members');
@@ -65,6 +65,125 @@ const TopBarangays = () => {
     );
   }
 
+  // List style view - vertical list with more details
+  if (listStyle) {
+    return (
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6" fontWeight={600} sx={{ fontSize: '1rem', color: '#1f2937' }}>
+            Top Barangays
+          </Typography>
+          <Button
+            size="small"
+            endIcon={<ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />}
+            onClick={handleSeeAll}
+            sx={{
+              color: '#15803d',
+              textTransform: 'none',
+              fontSize: '0.75rem',
+              padding: '4px 8px',
+              '&:hover': {
+                bgcolor: '#f0fdf4'
+              }
+            }}
+          >
+            See All
+          </Button>
+        </Box>
+
+        <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          {topBarangays.map((barangay, index) => (
+            <Box
+              key={barangay.id}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 1.5,
+                mb: 1,
+                borderRadius: 1.5,
+                bgcolor: index === 0 ? '#f0fdf4' : '#f9fafb',
+                border: index === 0 ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: '#dcfce7',
+                  boxShadow: 1
+                }
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={1} sx={{ minWidth: 0, flex: 1 }}>
+                <Box
+                  sx={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    bgcolor: index === 0 ? '#15803d' : index === 1 ? '#22c55e' : '#86efac',
+                    color: index < 2 ? 'white' : '#15803d',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    flexShrink: 0
+                  }}
+                >
+                  {index + 1}
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography 
+                    variant="body2" 
+                    fontWeight={600} 
+                    sx={{ 
+                      color: '#1f2937',
+                      fontSize: '0.8rem',
+                      lineHeight: 1.2,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {barangay.barangayName}
+                  </Typography>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      color: '#6b7280',
+                      fontSize: '0.65rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'block'
+                    }}
+                  >
+                    {barangay.cityName}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  px: 1,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: '#15803d',
+                  color: 'white',
+                  minWidth: 36,
+                  textAlign: 'center',
+                  flexShrink: 0,
+                  ml: 0.5
+                }}
+              >
+                <Typography variant="body2" fontWeight={700} sx={{ fontSize: '0.85rem' }}>
+                  {barangay.memberCount}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    );
+  }
+
+  // Card style view - horizontal cards (original design)
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>

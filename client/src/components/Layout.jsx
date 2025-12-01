@@ -14,7 +14,7 @@ const Layout = ({ children }) => {
     <NotificationProvider>
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <main className="lg:ml-64 p-0">
+        <main className="pt-14 lg:ml-64">
           <div className="w-full">
             {children}
           </div>
