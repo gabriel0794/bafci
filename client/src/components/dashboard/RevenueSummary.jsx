@@ -20,6 +20,10 @@ const RevenueSummary = () => {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   
+  // Yesterday: For comparison
+  const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0);
+  const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+  
   // Weekly: Current week from Monday to Sunday
   const currentDay = now.getDay();
   const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
@@ -27,6 +31,20 @@ const RevenueSummary = () => {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
   weekEnd.setHours(23, 59, 59);
+  
+  // Last week: For weekly comparison
+  const lastWeekStart = new Date(weekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const lastWeekEnd = new Date(weekEnd);
+  lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+  
+  // Last month: For monthly comparison
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  
+  // Last year: For yearly comparison
+  const lastYearStart = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0);
+  const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
   
   // Monthly: Current month from 1st to last day
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
@@ -215,8 +233,168 @@ const RevenueSummary = () => {
   const monthly = calculateTotals(monthlyRevenues, monthlyPaymentsFiltered, monthlyMembershipFees);
   const yearly = calculateTotals(yearlyRevenues, yearlyPayments, yearlyMembershipFees);
 
+  // Calculate previous period totals for comparison
+  const yesterdayRevenues = filterRevenuesByDateRange(yesterdayStart, yesterdayEnd);
+  const yesterdayPayments = filterPaymentsByDateRange(yesterdayStart, yesterdayEnd);
+  const yesterdayMembershipFees = filterMembershipFeesByDateRange(yesterdayStart, yesterdayEnd);
+  const yesterday = calculateTotals(yesterdayRevenues, yesterdayPayments, yesterdayMembershipFees);
+
+  const lastWeekRevenues = filterRevenuesByDateRange(lastWeekStart, lastWeekEnd);
+  const lastWeekPayments = filterPaymentsByDateRange(lastWeekStart, lastWeekEnd);
+  const lastWeekMembershipFeesData = filterMembershipFeesByDateRange(lastWeekStart, lastWeekEnd);
+  const lastWeek = calculateTotals(lastWeekRevenues, lastWeekPayments, lastWeekMembershipFeesData);
+
+  const lastMonthRevenues = filterRevenuesByDateRange(lastMonthStart, lastMonthEnd);
+  const lastMonthPayments = filterPaymentsByDateRange(lastMonthStart, lastMonthEnd);
+  const lastMonthMembershipFeesData = filterMembershipFeesByDateRange(lastMonthStart, lastMonthEnd);
+  const lastMonth = calculateTotals(lastMonthRevenues, lastMonthPayments, lastMonthMembershipFeesData);
+
+  const lastYearRevenues = filterRevenuesByDateRange(lastYearStart, lastYearEnd);
+  const lastYearPayments = filterPaymentsByDateRange(lastYearStart, lastYearEnd);
+  const lastYearMembershipFeesData = filterMembershipFeesByDateRange(lastYearStart, lastYearEnd);
+  const lastYear = calculateTotals(lastYearRevenues, lastYearPayments, lastYearMembershipFeesData);
+
+  // Calculate percentage change
+  const calculatePercentageChange = (current, previous) => {
+    if (previous === 0) {
+      return current > 0 ? 100 : 0;
+    }
+    return ((current - previous) / Math.abs(previous)) * 100;
+  };
+
+  // Get percentage change for each period - Total Revenue
+  const dailyChange = calculatePercentageChange(daily.total, yesterday.total);
+  const weeklyChange = calculatePercentageChange(weekly.total, lastWeek.total);
+  const monthlyChange = calculatePercentageChange(monthly.total, lastMonth.total);
+  const yearlyChange = calculatePercentageChange(yearly.total, lastYear.total);
+
+  // Get percentage change for Monthly Payments
+  const dailyPaymentsChange = calculatePercentageChange(daily.monthlyPayments, yesterday.monthlyPayments);
+  const weeklyPaymentsChange = calculatePercentageChange(weekly.monthlyPayments, lastWeek.monthlyPayments);
+  const monthlyPaymentsChange = calculatePercentageChange(monthly.monthlyPayments, lastMonth.monthlyPayments);
+  const yearlyPaymentsChange = calculatePercentageChange(yearly.monthlyPayments, lastYear.monthlyPayments);
+
+  // Get percentage change for Membership Fees
+  const dailyFeesChange = calculatePercentageChange(daily.membershipFees, yesterday.membershipFees);
+  const weeklyFeesChange = calculatePercentageChange(weekly.membershipFees, lastWeek.membershipFees);
+  const monthlyFeesChange = calculatePercentageChange(monthly.membershipFees, lastMonth.membershipFees);
+  const yearlyFeesChange = calculatePercentageChange(yearly.membershipFees, lastYear.membershipFees);
+
+  // Get percentage change for Expenses
+  const dailyExpensesChange = calculatePercentageChange(daily.expenses, yesterday.expenses);
+  const weeklyExpensesChange = calculatePercentageChange(weekly.expenses, lastWeek.expenses);
+  const monthlyExpensesChange = calculatePercentageChange(monthly.expenses, lastMonth.expenses);
+  const yearlyExpensesChange = calculatePercentageChange(yearly.expenses, lastYear.expenses);
+
   // Set active period
   const setPeriod = (period) => setActivePeriod(period);
+
+  // Percentage change indicator component
+  const PercentageIndicator = ({ change, comparisonLabel }) => {
+    const isPositive = change >= 0;
+    const formattedChange = Math.abs(change).toFixed(1);
+    
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className={`inline-flex items-center text-xs font-medium px-1.5 py-0.5 rounded ${
+          isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {isPositive ? (
+            <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
+            </svg>
+          ) : (
+            <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l-9.2 9.2M7 7v10h10" />
+            </svg>
+          )}
+          {formattedChange}%
+        </span>
+        <span className="text-xs text-gray-400">{comparisonLabel}</span>
+      </div>
+    );
+  };
+
+  // Get comparison label based on active period
+  const getComparisonLabel = () => {
+    switch (activePeriod) {
+      case 'weekly': return 'vs last week';
+      case 'monthly': return 'vs last month';
+      case 'yearly': return 'vs last year';
+      case 'today':
+      default: return 'vs yesterday';
+    }
+  };
+
+  // Get percentage change based on active period
+  const getActivePercentageChange = () => {
+    switch (activePeriod) {
+      case 'weekly': return weeklyChange;
+      case 'monthly': return monthlyChange;
+      case 'yearly': return yearlyChange;
+      case 'today':
+      default: return dailyChange;
+    }
+  };
+
+  // Get percentage change for monthly payments based on active period
+  const getActivePaymentsChange = () => {
+    switch (activePeriod) {
+      case 'weekly': return weeklyPaymentsChange;
+      case 'monthly': return monthlyPaymentsChange;
+      case 'yearly': return yearlyPaymentsChange;
+      case 'today':
+      default: return dailyPaymentsChange;
+    }
+  };
+
+  // Get percentage change for membership fees based on active period
+  const getActiveFeesChange = () => {
+    switch (activePeriod) {
+      case 'weekly': return weeklyFeesChange;
+      case 'monthly': return monthlyFeesChange;
+      case 'yearly': return yearlyFeesChange;
+      case 'today':
+      default: return dailyFeesChange;
+    }
+  };
+
+  // Get percentage change for expenses based on active period
+  const getActiveExpensesChange = () => {
+    switch (activePeriod) {
+      case 'weekly': return weeklyExpensesChange;
+      case 'monthly': return monthlyExpensesChange;
+      case 'yearly': return yearlyExpensesChange;
+      case 'today':
+      default: return dailyExpensesChange;
+    }
+  };
+
+  // Expense indicator (inverted - lower expenses is good)
+  const ExpenseIndicator = ({ change, comparisonLabel }) => {
+    const isPositive = change <= 0; // For expenses, decrease is good
+    const formattedChange = Math.abs(change).toFixed(1);
+    
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className={`inline-flex items-center text-xs font-medium px-1.5 py-0.5 rounded ${
+          isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {change <= 0 ? (
+            <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l-9.2 9.2M7 7v10h10" />
+            </svg>
+          ) : (
+            <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
+            </svg>
+          )}
+          {formattedChange}%
+        </span>
+        <span className="text-xs text-gray-400">{comparisonLabel}</span>
+      </div>
+    );
+  };
 
   // Helper function to render time period section
   const renderTimePeriod = (title, period, isVisible, toggleFn) => (
@@ -241,27 +419,33 @@ const RevenueSummary = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</div>
-            <div className="text-xl font-semibold text-gray-900 mt-1 break-words">
-              {formatCurrency(period.total)}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xl font-semibold text-gray-900 break-words">
+                {formatCurrency(period.total)}
+              </span>
             </div>
+            <PercentageIndicator change={getActivePercentageChange()} comparisonLabel={getComparisonLabel()} />
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Payments</div>
             <div className="text-xl font-semibold text-blue-600 mt-1 break-words">
               {formatCurrency(period.monthlyPayments)}
             </div>
+            <PercentageIndicator change={getActivePaymentsChange()} comparisonLabel={getComparisonLabel()} />
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Membership Fee Payments</div>
             <div className="text-xl font-semibold text-green-600 mt-1 break-words">
               {formatCurrency(period.membershipFees)}
             </div>
+            <PercentageIndicator change={getActiveFeesChange()} comparisonLabel={getComparisonLabel()} />
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow min-h-[90px] flex flex-col justify-center">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</div>
             <div className="text-xl font-semibold text-red-600 mt-1 break-words">
               {formatCurrency(period.expenses)}
             </div>
+            <ExpenseIndicator change={getActiveExpensesChange()} comparisonLabel={getComparisonLabel()} />
           </div>
         </div>
       )}

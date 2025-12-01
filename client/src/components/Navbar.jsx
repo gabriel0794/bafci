@@ -225,7 +225,7 @@ export default function Navbar({ activePage }) {
             <button
               type="button"
               onClick={() => setShowProfileDropdown(prev => !prev)}
-              className="flex items-center gap-2 rounded-full hover:bg-gray-100 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="flex items-center gap-2 rounded-sm hover:bg-gray-100 px-2 py-1"
             >
               <div className="hidden sm:flex flex-col items-end leading-tight">
                 <span className="text-xs text-gray-500">Signed in as</span>
