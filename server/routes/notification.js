@@ -5,8 +5,217 @@ import { auth } from '../middleware/auth.js';
 import { sendOverduePaymentNotification, sendBulkOverdueNotifications } from '../services/smsService.js';
 import { triggerManualSMSCheck } from '../services/smsScheduler.js';
 
-const { Payment, Member, sequelize } = models;
+const { Payment, Member, Notification, sequelize } = models;
 const router = express.Router();
+
+// ==========================================
+// NOTIFICATION CRUD ENDPOINTS
+// ==========================================
+
+/**
+ * Get all notifications (with pagination)
+ */
+router.get('/', auth, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, unreadOnly = false } = req.query;
+    
+    const whereClause = {};
+    if (unreadOnly === 'true') {
+      whereClause.read = false;
+    }
+
+    const notifications = await Notification.findAndCountAll({
+      where: whereClause,
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: [{
+        model: Member,
+        as: 'member',
+        attributes: ['id', 'fullName', 'applicationNumber'],
+        required: false
+      }]
+    });
+
+    res.json({
+      success: true,
+      notifications: notifications.rows,
+      total: notifications.count,
+      unreadCount: await Notification.count({ where: { read: false } })
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching notifications',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Create a new notification
+ */
+router.post('/', auth, async (req, res) => {
+  try {
+    const { type, message, memberId, metadata } = req.body;
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message is required'
+      });
+    }
+
+    const notification = await Notification.create({
+      type: type || 'general',
+      message,
+      memberId: memberId || null,
+      metadata: metadata || null,
+      read: false
+    });
+
+    res.status(201).json({
+      success: true,
+      notification
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while creating notification',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Mark a notification as read
+ */
+router.patch('/:id/read', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await Notification.findByPk(id);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    await notification.update({ read: true });
+
+    res.json({
+      success: true,
+      notification
+    });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating notification',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Mark all notifications as read
+ */
+router.patch('/mark-all-read', auth, async (req, res) => {
+  try {
+    await Notification.update(
+      { read: true },
+      { where: { read: false } }
+    );
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating notifications',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Delete a notification
+ */
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await Notification.findByPk(id);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    await notification.destroy();
+
+    res.json({
+      success: true,
+      message: 'Notification deleted'
+    });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while deleting notification',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Delete all notifications
+ */
+router.delete('/', auth, async (req, res) => {
+  try {
+    await Notification.destroy({ where: {} });
+
+    res.json({
+      success: true,
+      message: 'All notifications deleted'
+    });
+  } catch (error) {
+    console.error('Error deleting all notifications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while deleting notifications',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get unread count only
+ */
+router.get('/unread-count', auth, async (req, res) => {
+  try {
+    const count = await Notification.count({ where: { read: false } });
+    res.json({ success: true, count });
+  } catch (error) {
+    console.error('Error getting unread count:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// ==========================================
+// SMS & OVERDUE MEMBER ENDPOINTS (existing)
+// ==========================================
 
 /**
  * Get members with overdue payments (no payment in the last 3+ months)

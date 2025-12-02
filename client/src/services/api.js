@@ -103,3 +103,151 @@ export const authService = {
     }
   },
 };
+
+// Notification Service - Database-backed notifications
+export const notificationService = {
+  getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      'x-auth-token': token || '',
+    };
+  },
+
+  // Fetch all notifications
+  async getNotifications(limit = 50, offset = 0) {
+    try {
+      const response = await fetch(
+        `${API_URL}/notifications?limit=${limit}&offset=${offset}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      throw error;
+    }
+  },
+
+  // Create a new notification
+  async createNotification({ type, message, memberId, metadata }) {
+    try {
+      const response = await fetch(`${API_URL}/notifications`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ type, message, memberId, metadata }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create notification');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      throw error;
+    }
+  },
+
+  // Mark a notification as read
+  async markAsRead(id) {
+    try {
+      const response = await fetch(`${API_URL}/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark notification as read');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  },
+
+  // Mark all notifications as read
+  async markAllAsRead() {
+    try {
+      const response = await fetch(`${API_URL}/notifications/mark-all-read`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark all notifications as read');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      throw error;
+    }
+  },
+
+  // Delete a notification
+  async deleteNotification(id) {
+    try {
+      const response = await fetch(`${API_URL}/notifications/${id}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete notification');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      throw error;
+    }
+  },
+
+  // Delete all notifications
+  async deleteAllNotifications() {
+    try {
+      const response = await fetch(`${API_URL}/notifications`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete all notifications');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting all notifications:', error);
+      throw error;
+    }
+  },
+
+  // Get unread count only
+  async getUnreadCount() {
+    try {
+      const response = await fetch(`${API_URL}/notifications/unread-count`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get unread count');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting unread count:', error);
+      throw error;
+    }
+  },
+};

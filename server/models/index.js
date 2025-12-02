@@ -8,6 +8,7 @@ import Payment from './payment.js';
 import Program from './program.model.js';
 import ProgramAgeBracket from './programAgeBracket.model.js';
 import BarangayMember from './barangayMember.model.js';
+import Notification from './notification.model.js';
 
 // Initialize models
 const models = {
@@ -20,6 +21,7 @@ const models = {
   Program,
   ProgramAgeBracket,
   BarangayMember,
+  Notification,
   sequelize
 };
 

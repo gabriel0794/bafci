@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { notificationService } from '../services/api';
 
 const NotificationContext = createContext();
 
@@ -12,57 +13,130 @@ export const useNotifications = () => {
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  // Load notifications from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('bafci_notifications');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setNotifications(parsed);
-      } catch (error) {
-        console.error('Error loading notifications:', error);
+  // Fetch notifications from database on mount
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Not logged in, skip fetching
+        return;
       }
+      
+      const response = await notificationService.getNotifications(50, 0);
+      if (response.success) {
+        // Transform database notifications to match expected format
+        const transformedNotifications = response.notifications.map(notif => ({
+          id: notif.id,
+          type: notif.type,
+          message: notif.message,
+          read: notif.read,
+          timestamp: notif.createdAt,
+          memberId: notif.memberId,
+          member: notif.member,
+          metadata: notif.metadata
+        }));
+        setNotifications(transformedNotifications);
+        setUnreadCount(response.unreadCount);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Save notifications to localStorage whenever they change
+  // Fetch notifications on mount and set up polling
   useEffect(() => {
-    localStorage.setItem('bafci_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
-  const addNotification = (notification) => {
-    const newNotification = {
-      id: Date.now() + Math.random(),
-      timestamp: new Date().toISOString(),
-      read: false,
-      ...notification
-    };
-    setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep only last 50
+  // Add a new notification (saves to database)
+  const addNotification = async (notification) => {
+    try {
+      const response = await notificationService.createNotification({
+        type: notification.type || 'general',
+        message: notification.message,
+        memberId: notification.memberId || null,
+        metadata: notification.metadata || null
+      });
+      
+      if (response.success) {
+        // Refresh notifications to get the new one
+        await fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Error adding notification:', error);
+    }
   };
 
-  const markAsRead = (id) => {
-    setNotifications(prev =>
-      prev.map(notif => notif.id === id ? { ...notif, read: true } : notif)
-    );
+  // Mark a notification as read
+  const markAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev =>
+        prev.map(notif => notif.id === id ? { ...notif, read: true } : notif)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev =>
+        prev.map(notif => ({ ...notif, read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   };
 
-  const clearNotification = (id) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  // Delete a notification
+  const clearNotification = async (id) => {
+    try {
+      const notification = notifications.find(n => n.id === id);
+      await notificationService.deleteNotification(id);
+      setNotifications(prev => prev.filter(notif => notif.id !== id));
+      if (notification && !notification.read) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
-  const clearAllNotifications = () => {
-    setNotifications([]);
+  // Delete all notifications
+  const clearAllNotifications = async () => {
+    try {
+      await notificationService.deleteAllNotifications();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error deleting all notifications:', error);
+    }
   };
 
+  // Get unread count
   const getUnreadCount = () => {
-    return notifications.filter(n => !n.read).length;
+    return unreadCount;
+  };
+
+  // Refresh notifications manually
+  const refreshNotifications = () => {
+    fetchNotifications();
   };
 
   return (
@@ -74,7 +148,9 @@ export const NotificationProvider = ({ children }) => {
         markAllAsRead,
         clearNotification,
         clearAllNotifications,
-        getUnreadCount
+        getUnreadCount,
+        refreshNotifications,
+        loading
       }}
     >
       {children}
