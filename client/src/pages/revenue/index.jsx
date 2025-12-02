@@ -99,7 +99,7 @@ const RevenuePage = () => {
     category: 'electric_bill',
     date: new Date().toISOString().split('T')[0],
     branchId: '',
-    receipt: null
+    receipts: []
   });
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -306,9 +306,11 @@ const RevenuePage = () => {
         formDataToSend.append('branchId', formData.branchId);
       }
       
-      // Add receipt file if it exists
-      if (formData.receipt) {
-        formDataToSend.append('receipt', formData.receipt);
+      // Add receipt files if they exist
+      if (formData.receipts && formData.receipts.length > 0) {
+        formData.receipts.forEach((file) => {
+          formDataToSend.append('receipt', file);
+        });
       }
 
       const response = await fetch(`${apiURL}/revenue`, {
@@ -335,7 +337,7 @@ const RevenuePage = () => {
         category: 'electric_bill',
         date: new Date().toISOString().split('T')[0],
         branchId: '',
-        receipt: null
+        receipts: []
       });
       setError(null); // Clear any previous errors
     } catch (err) {
@@ -394,7 +396,7 @@ const RevenuePage = () => {
                   <h2 className="text-lg font-medium text-gray-900">Add Expense</h2>
                   <button
                     onClick={() => setShowExpenseDialog(false)}
-                    className="text-gray-400 hover:text-gray-500"
+                    className="text-gray-400 hover:text-gray-500 cursor-pointer"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -509,8 +511,36 @@ const RevenuePage = () => {
 
               <div>
                 <label htmlFor="receipt" className="block text-sm font-medium text-gray-700">
-                  Upload Receipt (Optional)
+                  Upload Receipt (Optional) <span className="text-gray-400 font-normal">- Max 5MB each</span>
                 </label>
+                {/* Display uploaded files */}
+                {formData.receipts && formData.receipts.length > 0 && (
+                  <div className="mt-1 space-y-2">
+                    {formData.receipts.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                        <span className="text-sm text-green-700 truncate flex-1 mr-2">
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              receipts: prev.receipts.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Remove file"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Always show file input */}
                 <div className="mt-1 flex items-center">
                   <input
                     type="file"
@@ -526,18 +556,14 @@ const RevenuePage = () => {
                           e.target.value = '';
                           return;
                         }
-                        setFormData(prev => ({ ...prev, receipt: file }));
+                        setFormData(prev => ({ ...prev, receipts: [...prev.receipts, file] }));
                         setError('');
+                        e.target.value = ''; // Reset input to allow selecting same file again
                       }
                     }}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer"
                   />
                 </div>
-                {formData.receipt && (
-                  <div className="mt-2 text-sm text-gray-600">
-                    Selected: {formData.receipt.name}
-                  </div>
-                )}
               </div>
 
               <div>
