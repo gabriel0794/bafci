@@ -1,6 +1,7 @@
 import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
+import { createNotification, NOTIFICATION_TYPES } from '../services/notificationHelper.js';
 
 const { FieldWorker, Branch } = models;
 const router = express.Router();
@@ -75,6 +76,18 @@ router.post('/', auth, async (req, res) => {
           attributes: ['id', 'name'],
         },
       ],
+    });
+
+    // Create notification for new field worker
+    await createNotification({
+      type: NOTIFICATION_TYPES.FIELD_WORKER_ADDED,
+      message: `New field worker "${name}" added to ${branch.name} branch`,
+      metadata: { 
+        fieldWorkerId: fieldWorker.id,
+        fieldWorkerName: name,
+        branchId: branch.id,
+        branchName: branch.name
+      }
     });
 
     res.status(201).json(createdWorker);

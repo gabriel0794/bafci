@@ -5,6 +5,7 @@ import fs from 'fs';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
 import sequelize from '../config/db.js';
+import { createNotification, NOTIFICATION_TYPES } from '../services/notificationHelper.js';
 
 const { Revenue, User, Branch } = models;
 const router = express.Router();
@@ -72,6 +73,21 @@ router.post('/', auth, upload.single('receipt'), async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
         { model: Branch, as: 'branch', attributes: ['id', 'name'] }
       ]
+    });
+
+    // Create notification for expense
+    const categoryLabel = req.body.category ? req.body.category.replace(/_/g, ' ') : 'expense';
+    const branchName = revenueWithDetails.branch ? revenueWithDetails.branch.name : '';
+    const branchText = branchName ? ` for ${branchName}` : '';
+    await createNotification({
+      type: NOTIFICATION_TYPES.EXPENSE_ADDED,
+      message: `New expense added: ₱${Math.abs(parseFloat(req.body.amount)).toFixed(2)} - ${categoryLabel}${branchText}`,
+      metadata: { 
+        revenueId: revenue.id, 
+        category: req.body.category,
+        amount: req.body.amount,
+        description: req.body.description
+      }
     });
 
     res.status(201).json(revenueWithDetails);

@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
+import { createNotification, NOTIFICATION_TYPES } from '../services/notificationHelper.js';
 
 // Multer configuration for file uploads
 const uploadDir = 'uploads/';
@@ -114,7 +115,22 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
         await fieldWorker.update({
           totalMembershipFeeCollection: currentTotal + membershipFeeAmount
         });
+
+        // Create notification for new member under field worker
+        await createNotification({
+          type: NOTIFICATION_TYPES.NEW_MEMBER,
+          message: `New member "${member.fullName}" added under field worker "${fieldWorker.name}"`,
+          memberId: member.id,
+          metadata: { fieldWorkerId: fieldWorker.id, fieldWorkerName: fieldWorker.name }
+        });
       }
+    } else {
+      // Create notification for new member (no field worker)
+      await createNotification({
+        type: NOTIFICATION_TYPES.NEW_MEMBER,
+        message: `New member "${member.fullName}" has been registered`,
+        memberId: member.id
+      });
     }
 
     res.status(201).json(member);

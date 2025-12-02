@@ -1,5 +1,6 @@
 import express from 'express';
 import models from '../models/index.js';
+import { createNotification, NOTIFICATION_TYPES } from '../services/notificationHelper.js';
 
 const router = express.Router();
 const { Program, ProgramAgeBracket, Branch } = models;
@@ -175,15 +176,34 @@ router.post('/', async (req, res) => {
       await ProgramAgeBracket.bulkCreate(bracketsToCreate);
     }
 
-    // Fetch the complete program with age brackets
+    // Fetch the complete program with age brackets and branch
     const completeProgram = await Program.findByPk(program.id, {
       include: [
         {
           model: ProgramAgeBracket,
           as: 'ageBrackets',
           order: [['minAge', 'ASC']]
+        },
+        {
+          model: Branch,
+          as: 'branch',
+          attributes: ['id', 'name']
         }
       ]
+    });
+
+    // Create notification for new program
+    const branchName = completeProgram.branch ? completeProgram.branch.name : 'Unknown';
+    await createNotification({
+      type: NOTIFICATION_TYPES.PROGRAM_ADDED,
+      message: `New program "${name}" added under ${branchName} branch`,
+      metadata: { 
+        programId: program.id,
+        programName: name,
+        branchId: branchId,
+        branchName: branchName,
+        ageBracketsCount: ageBrackets ? ageBrackets.length : 0
+      }
     });
 
     res.status(201).json(completeProgram);

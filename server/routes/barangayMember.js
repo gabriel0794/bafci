@@ -1,6 +1,7 @@
 import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
+import { createNotification, NOTIFICATION_TYPES } from '../services/notificationHelper.js';
 
 const router = express.Router();
 const { BarangayMember, sequelize } = models;
@@ -131,6 +132,23 @@ router.post('/adjust', auth, async (req, res) => {
       }
 
       await transaction.commit();
+
+      // Create notification for barangay member count change
+      if (parsedDelta > 0) {
+        await createNotification({
+          type: NOTIFICATION_TYPES.BARANGAY_MEMBER_ADDED,
+          message: `${parsedDelta} member(s) added to barangay list: ${barangayName}, ${cityName}`,
+          metadata: { 
+            barangayId: barangayMember.id,
+            barangayName,
+            cityName,
+            provinceName,
+            delta: parsedDelta,
+            newTotal: barangayMember.memberCount
+          }
+        });
+      }
+
       res.json(barangayMember.toJSON());
     } catch (innerError) {
       await transaction.rollback();

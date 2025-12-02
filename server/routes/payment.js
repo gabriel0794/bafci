@@ -1,6 +1,7 @@
 import express from 'express';
 import models from '../models/index.js';
 import { auth } from '../middleware/auth.js';
+import { createNotification, NOTIFICATION_TYPES } from '../services/notificationHelper.js';
 
 const { Payment, Member, FieldWorker, sequelize } = models;
 const router = express.Router();
@@ -124,6 +125,20 @@ router.post('/', auth, async (req, res) => {
           });
         }
       }
+
+      // Create notification for payment
+      const lateText = isLate ? ` (Late payment with ${lateFeePercentage}% fee)` : '';
+      await createNotification({
+        type: NOTIFICATION_TYPES.PAYMENT_MADE,
+        message: `Monthly payment of ₱${totalAmount.toFixed(2)} received from "${member.fullName}"${lateText}`,
+        memberId: member.id,
+        metadata: { 
+          paymentId: payment.id, 
+          amount: totalAmount, 
+          isLate,
+          lateFeePercentage: isLate ? lateFeePercentage : 0
+        }
+      });
 
       res.status(201).json({
         message: 'Payment recorded successfully',
